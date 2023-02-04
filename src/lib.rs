@@ -1,6 +1,14 @@
 use anyhow::{anyhow, Result};
-use async_nats::{header::NATS_MESSAGE_ID, jetstream::Context, Event};
+use async_nats::{
+    header::NATS_MESSAGE_ID,
+    jetstream::{
+        consumer::{pull::Stream, PullConsumer},
+        Context,
+    },
+    Event,
+};
 use async_trait::async_trait;
+use futures::{stream::Take, StreamExt};
 use tracing::{error, warn};
 
 #[async_trait]
@@ -11,6 +19,12 @@ pub trait NatsClient: Send + Sync {
         payload: Vec<u8>,
         headers: Option<HeaderMap>,
     ) -> Result<()>;
+    async fn pull_messages(
+        &self,
+        stream_name: &str,
+        consumer_name: &str,
+        n: usize,
+    ) -> Result<Take<Stream>>;
 }
 
 #[derive(Clone)]
@@ -72,5 +86,31 @@ impl NatsClient for Client {
             .map_err(|e| anyhow!("failed to ack message: {}", e))?;
 
         Ok(())
+    }
+
+    async fn pull_messages(
+        &self,
+        stream_name: &str,
+        consumer_name: &str,
+        n: usize,
+    ) -> Result<Take<Stream>> {
+        let stream = self
+            .jetstream
+            .get_stream(stream_name)
+            .await
+            .map_err(|e| anyhow!("failed to get stream: {}", e))?;
+
+        let consumer: PullConsumer = stream
+            .get_consumer(consumer_name)
+            .await
+            .map_err(|e| anyhow!("failed to pull consumer: {}", e))?;
+
+        let messages = consumer
+            .messages()
+            .await
+            .map_err(|e| anyhow!("failed to create stream of messages: {}", e))?
+            .take(n);
+
+        Ok(messages)
     }
 }
