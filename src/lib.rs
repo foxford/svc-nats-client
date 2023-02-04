@@ -19,14 +19,16 @@ pub struct Client {
 }
 
 #[derive(Default)]
-pub struct HeaderMap(async_nats::HeaderMap);
+pub struct HeaderMap {
+    inner: async_nats::HeaderMap,
+}
 
 impl HeaderMap {
     pub fn nats_message_id(message_id: &str) -> Self {
         let mut headers = async_nats::HeaderMap::new();
         headers.insert(NATS_MESSAGE_ID, message_id);
 
-        Self { 0: headers }
+        Self { inner: headers }
     }
 }
 
@@ -63,7 +65,7 @@ impl NatsClient for Client {
         headers: Option<HeaderMap>,
     ) -> Result<()> {
         self.jetstream
-            .publish_with_headers(subject, headers.unwrap_or_default().0, payload.into())
+            .publish_with_headers(subject, headers.unwrap_or_default().inner, payload.into())
             .await
             .map_err(|e| anyhow!("failed to publish message through nats: {}", e))?
             .await
