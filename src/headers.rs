@@ -5,11 +5,14 @@ pub struct HeaderMap {
     inner: async_nats::HeaderMap,
 }
 
-impl HeaderMap {
+#[derive(Default)]
+pub struct HeaderMapBuilder {
+    inner: async_nats::HeaderMap,
+}
+
+impl HeaderMapBuilder {
     pub fn new() -> Self {
-        Self {
-            inner: async_nats::HeaderMap::new(),
-        }
+        Default::default()
     }
 
     pub fn nats_message_id(mut self, message_id: &str) -> Self {
@@ -23,7 +26,31 @@ impl HeaderMap {
         self
     }
 
-    pub fn get(self) -> async_nats::HeaderMap {
+    pub fn build(self) -> HeaderMap {
+        HeaderMap { inner: self.inner }
+    }
+}
+
+impl HeaderMap {
+    pub fn nats_message_id(&self) -> Option<&str> {
         self.inner
+            .get(async_nats::header::NATS_MESSAGE_ID)
+            .map(|v| v.into())
+    }
+
+    pub fn sender_agent_id(&self) -> Option<&str> {
+        self.inner.get(SENDER_AGENT_ID).map(|v| v.into())
+    }
+}
+
+impl From<async_nats::HeaderMap> for HeaderMap {
+    fn from(value: async_nats::HeaderMap) -> Self {
+        Self { inner: value }
+    }
+}
+
+impl From<HeaderMap> for async_nats::HeaderMap {
+    fn from(value: HeaderMap) -> Self {
+        value.inner
     }
 }

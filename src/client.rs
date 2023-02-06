@@ -1,14 +1,11 @@
-use crate::{headers::HeaderMap, NatsClient};
+use crate::{headers::HeaderMap, MessageStream, NatsClient};
 use anyhow::{anyhow, Result};
 use async_nats::{
-    jetstream::{
-        consumer::{pull::Stream, PullConsumer},
-        Context,
-    },
+    jetstream::{consumer::PullConsumer, Context},
     Event,
 };
 use async_trait::async_trait;
-use futures::{stream::Take, StreamExt};
+use futures::StreamExt;
 use tracing::{error, warn};
 
 #[derive(Clone)]
@@ -49,7 +46,7 @@ impl NatsClient for Client {
         headers: Option<HeaderMap>,
     ) -> Result<()> {
         self.jetstream
-            .publish_with_headers(subject, headers.unwrap_or_default().get(), payload.into())
+            .publish_with_headers(subject, headers.unwrap_or_default().into(), payload.into())
             .await
             .map_err(|e| anyhow!("failed to publish message through nats: {}", e))?
             .await
@@ -63,7 +60,7 @@ impl NatsClient for Client {
         stream_name: &str,
         consumer_name: &str,
         n: usize,
-    ) -> Result<Take<Stream>> {
+    ) -> Result<MessageStream> {
         let stream = self
             .jetstream
             .get_stream(stream_name)
@@ -75,12 +72,12 @@ impl NatsClient for Client {
             .await
             .map_err(|e| anyhow!("failed to pull consumer: {}", e))?;
 
-        let messages = consumer
+        let stream = consumer
             .messages()
             .await
             .map_err(|e| anyhow!("failed to create stream of messages: {}", e))?
             .take(n);
 
-        Ok(messages)
+        Ok(MessageStream(stream))
     }
 }
