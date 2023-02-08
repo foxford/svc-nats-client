@@ -21,7 +21,7 @@ pub async fn new(url: &str, creds: &str) -> Result<Client> {
                     error!(%error, "server error occurred");
                 }
                 Event::ClientError(error) => {
-                    error!(%error, "server error occurred");
+                    error!(%error, "client error occurred");
                 }
                 event => {
                     warn!(%event, "event occurred")
