@@ -7,8 +7,8 @@ repository = "https://github.com/foxford/svc-nats-client"
 description = "Async nats client"
 
 [dependencies]
-anyhow = "1"
 async-nats = "0.27"
 async-trait = "0.1"
-tracing = "0.1"
 futures = "0.3"
+thiserror = "1.0"
+tracing = "0.1"

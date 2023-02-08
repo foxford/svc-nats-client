@@ -1,10 +1,11 @@
 use crate::{headers::HeaderMap, MessageStream, NatsClient};
-use anyhow::{anyhow, Result};
 use async_nats::{
     jetstream::{consumer::PullConsumer, Context},
     Event,
 };
 use async_trait::async_trait;
+use std::io;
+use thiserror::Error;
 use tracing::{error, warn};
 
 #[derive(Clone)]
@@ -12,7 +13,21 @@ pub struct Client {
     pub jetstream: Context,
 }
 
-pub async fn new(url: &str, creds: &str) -> Result<Client> {
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("failed to publish message")]
+    PublishFailed(String),
+    #[error("failed to ack message")]
+    AckFailed(String),
+    #[error("failed to get stream")]
+    GettingStreamFailed(String),
+    #[error("failed to get consumer")]
+    GettingConsumerFailed(String),
+    #[error("failed to create stream of messages")]
+    StreamCreationFailed(String),
+}
+
+pub async fn new(url: &str, creds: &str) -> io::Result<Client> {
     let client = async_nats::ConnectOptions::with_credentials_file(creds.into())
         .await?
         .event_callback(|event| async move {
@@ -43,33 +58,33 @@ impl NatsClient for Client {
         subject: String,
         payload: Vec<u8>,
         headers: Option<HeaderMap>,
-    ) -> Result<()> {
+    ) -> Result<(), Error> {
         self.jetstream
             .publish_with_headers(subject, headers.unwrap_or_default().into(), payload.into())
             .await
-            .map_err(|e| anyhow!("failed to publish message through nats: {}", e))?
+            .map_err(|e| Error::PublishFailed(e.to_string()))?
             .await
-            .map_err(|e| anyhow!("failed to ack message: {}", e))?;
+            .map_err(|e| Error::AckFailed(e.to_string()))?;
 
         Ok(())
     }
 
-    async fn subscribe(&self, stream: &str, consumer: &str) -> Result<MessageStream> {
+    async fn subscribe(&self, stream: &str, consumer: &str) -> Result<MessageStream, Error> {
         let stream = self
             .jetstream
             .get_stream(stream)
             .await
-            .map_err(|e| anyhow!("failed to get stream: {}", e))?;
+            .map_err(|e| Error::GettingStreamFailed(e.to_string()))?;
 
         let consumer: PullConsumer = stream
             .get_consumer(consumer)
             .await
-            .map_err(|e| anyhow!("failed to pull consumer: {}", e))?;
+            .map_err(|e| Error::GettingConsumerFailed(e.to_string()))?;
 
         let stream = consumer
             .messages()
             .await
-            .map_err(|e| anyhow!("failed to create stream of messages: {}", e))?;
+            .map_err(|e| Error::StreamCreationFailed(e.to_string()))?;
 
         Ok(MessageStream(stream))
     }
