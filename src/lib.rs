@@ -1,22 +1,24 @@
 use anyhow::Result;
-use async_nats::jetstream::consumer::pull::Stream;
+use async_nats::{jetstream::consumer::pull::Stream, Error};
 use async_trait::async_trait;
-use futures::stream::{Next, Take};
-use futures::StreamExt;
+use futures::stream::Take;
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
 pub use crate::client::new;
 pub use crate::headers::{HeaderMap, HeaderMapBuilder};
+pub use async_nats::jetstream::Message;
 
 pub mod client;
 pub mod headers;
 
 pub struct MessageStream(Take<Stream>);
 
-pub use async_nats::jetstream::Message;
+impl futures::Stream for MessageStream {
+    type Item = Result<Message, Error>;
 
-impl MessageStream {
-    pub fn next(&mut self) -> Next<'_, Take<Stream>> {
-        self.0.next()
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        Pin::new(&mut self.0).poll_next(cx)
     }
 }
 
