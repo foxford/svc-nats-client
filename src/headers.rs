@@ -15,7 +15,7 @@ impl HeaderMapBuilder {
         Default::default()
     }
 
-    pub fn nats_message_id(mut self, message_id: &str) -> Self {
+    pub fn message_id(mut self, message_id: &str) -> Self {
         self.inner
             .insert(async_nats::header::NATS_MESSAGE_ID, message_id);
         self
@@ -32,7 +32,7 @@ impl HeaderMapBuilder {
 }
 
 impl HeaderMap {
-    pub fn nats_message_id(&self) -> Option<&str> {
+    pub fn message_id(&self) -> Option<&str> {
         self.inner
             .get(async_nats::header::NATS_MESSAGE_ID)
             .map(|v| v.into())
