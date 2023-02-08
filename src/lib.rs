@@ -1,7 +1,6 @@
 use anyhow::Result;
 use async_nats::{jetstream::consumer::pull::Stream, Error};
 use async_trait::async_trait;
-use futures::stream::Take;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -12,7 +11,7 @@ pub use async_nats::jetstream::Message;
 pub mod client;
 pub mod headers;
 
-pub struct MessageStream(Take<Stream>);
+pub struct MessageStream(Stream);
 
 impl futures::Stream for MessageStream {
     type Item = Result<Message, Error>;

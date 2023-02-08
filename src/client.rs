@@ -5,7 +5,6 @@ use async_nats::{
     Event,
 };
 use async_trait::async_trait;
-use futures::StreamExt;
 use tracing::{error, warn};
 
 #[derive(Clone)]
@@ -70,8 +69,7 @@ impl NatsClient for Client {
         let stream = consumer
             .messages()
             .await
-            .map_err(|e| anyhow!("failed to create stream of messages: {}", e))?
-            .take(n);
+            .map_err(|e| anyhow!("failed to create stream of messages: {}", e))?;
 
         Ok(MessageStream(stream))
     }
