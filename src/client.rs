@@ -54,7 +54,7 @@ impl NatsClient for Client {
         Ok(())
     }
 
-    async fn pull_messages(&self, stream: &str, consumer: &str) -> Result<MessageStream> {
+    async fn subscribe(&self, stream: &str, consumer: &str) -> Result<MessageStream> {
         let stream = self
             .jetstream
             .get_stream(stream)
