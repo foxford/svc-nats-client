@@ -31,10 +31,5 @@ pub trait NatsClient: Send + Sync {
         headers: Option<HeaderMap>,
     ) -> Result<()>;
 
-    async fn pull_messages(
-        &self,
-        stream_name: &str,
-        consumer_name: &str,
-        n: usize,
-    ) -> Result<MessageStream>;
+    async fn pull_messages(&self, stream: &str, consumer: &str) -> Result<MessageStream>;
 }

@@ -55,20 +55,15 @@ impl NatsClient for Client {
         Ok(())
     }
 
-    async fn pull_messages(
-        &self,
-        stream_name: &str,
-        consumer_name: &str,
-        n: usize,
-    ) -> Result<MessageStream> {
+    async fn pull_messages(&self, stream: &str, consumer: &str) -> Result<MessageStream> {
         let stream = self
             .jetstream
-            .get_stream(stream_name)
+            .get_stream(stream)
             .await
             .map_err(|e| anyhow!("failed to get stream: {}", e))?;
 
         let consumer: PullConsumer = stream
-            .get_consumer(consumer_name)
+            .get_consumer(consumer)
             .await
             .map_err(|e| anyhow!("failed to pull consumer: {}", e))?;
 
