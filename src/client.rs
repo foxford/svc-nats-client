@@ -13,20 +13,6 @@ pub struct Client {
     pub jetstream: Context,
 }
 
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("failed to publish message")]
-    PublishFailed(String),
-    #[error("failed to ack message")]
-    AckFailed(String),
-    #[error("failed to get stream")]
-    GettingStreamFailed(String),
-    #[error("failed to get consumer")]
-    GettingConsumerFailed(String),
-    #[error("failed to create stream of messages")]
-    StreamCreationFailed(String),
-}
-
 pub async fn new(url: &str, creds: &str) -> io::Result<Client> {
     let client = async_nats::ConnectOptions::with_credentials_file(creds.into())
         .await?
@@ -51,6 +37,24 @@ pub async fn new(url: &str, creds: &str) -> io::Result<Client> {
     Ok(Client { jetstream })
 }
 
+#[derive(Debug, Error)]
+pub enum PublishError {
+    #[error("failed to publish message")]
+    PublishFailed(String),
+    #[error("failed to ack message")]
+    AckFailed(String),
+}
+
+#[derive(Debug, Error)]
+pub enum SubscribeError {
+    #[error("failed to get stream")]
+    GettingStreamFailed(String),
+    #[error("failed to get consumer")]
+    GettingConsumerFailed(String),
+    #[error("failed to create stream of messages")]
+    StreamCreationFailed(String),
+}
+
 #[async_trait]
 impl NatsClient for Client {
     async fn publish(
@@ -58,33 +62,37 @@ impl NatsClient for Client {
         subject: String,
         payload: Vec<u8>,
         headers: Option<HeaderMap>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), PublishError> {
         self.jetstream
             .publish_with_headers(subject, headers.unwrap_or_default().into(), payload.into())
             .await
-            .map_err(|e| Error::PublishFailed(e.to_string()))?
+            .map_err(|e| PublishError::PublishFailed(e.to_string()))?
             .await
-            .map_err(|e| Error::AckFailed(e.to_string()))?;
+            .map_err(|e| PublishError::AckFailed(e.to_string()))?;
 
         Ok(())
     }
 
-    async fn subscribe(&self, stream: &str, consumer: &str) -> Result<MessageStream, Error> {
+    async fn subscribe(
+        &self,
+        stream: &str,
+        consumer: &str,
+    ) -> Result<MessageStream, SubscribeError> {
         let stream = self
             .jetstream
             .get_stream(stream)
             .await
-            .map_err(|e| Error::GettingStreamFailed(e.to_string()))?;
+            .map_err(|e| SubscribeError::GettingStreamFailed(e.to_string()))?;
 
         let consumer: PullConsumer = stream
             .get_consumer(consumer)
             .await
-            .map_err(|e| Error::GettingConsumerFailed(e.to_string()))?;
+            .map_err(|e| SubscribeError::GettingConsumerFailed(e.to_string()))?;
 
         let stream = consumer
             .messages()
             .await
-            .map_err(|e| Error::StreamCreationFailed(e.to_string()))?;
+            .map_err(|e| SubscribeError::StreamCreationFailed(e.to_string()))?;
 
         Ok(MessageStream(stream))
     }

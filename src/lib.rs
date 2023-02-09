@@ -6,7 +6,7 @@ use std::{
 };
 
 pub use crate::{
-    client::{new, Error},
+    client::{new, PublishError, SubscribeError},
     headers::{HeaderMap, HeaderMapBuilder},
 };
 pub use async_nats::jetstream::Message;
@@ -31,7 +31,11 @@ pub trait NatsClient: Send + Sync {
         subject: String,
         payload: Vec<u8>,
         headers: Option<HeaderMap>,
-    ) -> Result<(), Error>;
+    ) -> Result<(), PublishError>;
 
-    async fn subscribe(&self, stream: &str, consumer: &str) -> Result<MessageStream, Error>;
+    async fn subscribe(
+        &self,
+        stream: &str,
+        consumer: &str,
+    ) -> Result<MessageStream, SubscribeError>;
 }
