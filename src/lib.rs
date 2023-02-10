@@ -7,12 +7,15 @@ use std::{
 
 pub use crate::{
     client::{new, PublishError, SubscribeError},
-    headers::{HeaderMap, HeaderMapBuilder},
+    headers::HeaderMap,
+    subject::Subject,
 };
+pub use async_nats::jetstream::AckKind;
 pub use async_nats::jetstream::Message;
 
-pub mod client;
-pub mod headers;
+mod client;
+mod headers;
+mod subject;
 
 pub struct MessageStream(Stream);
 
@@ -28,9 +31,9 @@ impl futures::Stream for MessageStream {
 pub trait NatsClient: Send + Sync {
     async fn publish(
         &self,
-        subject: String,
+        subject: Subject,
         payload: Vec<u8>,
-        headers: Option<HeaderMap>,
+        headers: HeaderMap,
     ) -> Result<(), PublishError>;
 
     async fn subscribe(

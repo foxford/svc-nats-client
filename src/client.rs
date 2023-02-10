@@ -1,11 +1,10 @@
-use crate::{headers::HeaderMap, MessageStream, NatsClient};
+use crate::{headers::HeaderMap, MessageStream, NatsClient, Subject};
 use async_nats::{
     jetstream::{consumer::PullConsumer, Context},
     Event,
 };
 use async_trait::async_trait;
 use std::io;
-use thiserror::Error;
 use tracing::{error, warn};
 
 #[derive(Clone)]
@@ -37,7 +36,7 @@ pub async fn new(url: &str, creds: &str) -> io::Result<Client> {
     Ok(Client { jetstream })
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum PublishError {
     #[error("failed to publish message")]
     PublishFailed(String),
@@ -45,7 +44,7 @@ pub enum PublishError {
     AckFailed(String),
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum SubscribeError {
     #[error("failed to get stream")]
     GettingStreamFailed(String),
@@ -59,12 +58,12 @@ pub enum SubscribeError {
 impl NatsClient for Client {
     async fn publish(
         &self,
-        subject: String,
+        subject: Subject,
         payload: Vec<u8>,
-        headers: Option<HeaderMap>,
+        headers: HeaderMap,
     ) -> Result<(), PublishError> {
         self.jetstream
-            .publish_with_headers(subject, headers.unwrap_or_default().into(), payload.into())
+            .publish_with_headers(subject.to_string(), headers.into(), payload.into())
             .await
             .map_err(|e| PublishError::PublishFailed(e.to_string()))?
             .await

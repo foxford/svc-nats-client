@@ -5,41 +5,27 @@ pub struct HeaderMap {
     inner: async_nats::HeaderMap,
 }
 
-#[derive(Default)]
-pub struct HeaderMapBuilder {
-    inner: async_nats::HeaderMap,
-}
-
-impl HeaderMapBuilder {
-    pub fn new() -> Self {
-        Default::default()
-    }
-
-    pub fn message_id(mut self, message_id: &str) -> Self {
-        self.inner
-            .insert(async_nats::header::NATS_MESSAGE_ID, message_id);
-        self
-    }
-
-    pub fn sender_agent_id(mut self, agent_id: &str) -> Self {
-        self.inner.insert(SENDER_AGENT_ID, agent_id);
-        self
-    }
-
-    pub fn build(self) -> HeaderMap {
-        HeaderMap { inner: self.inner }
-    }
+#[derive(Debug, thiserror::Error)]
+pub enum HeaderError {
+    #[error("failed to get `{0}`")]
+    HeaderNotFound(String),
 }
 
 impl HeaderMap {
-    pub fn message_id(&self) -> Option<&str> {
-        self.inner
-            .get(async_nats::header::NATS_MESSAGE_ID)
-            .map(|v| v.into())
+    pub fn new(message_id: &str, agent_id: &str) -> Self {
+        let mut inner = async_nats::HeaderMap::default();
+
+        inner.insert(async_nats::header::NATS_MESSAGE_ID, message_id);
+        inner.insert(SENDER_AGENT_ID, agent_id);
+
+        Self { inner }
     }
 
-    pub fn sender_agent_id(&self) -> Option<&str> {
-        self.inner.get(SENDER_AGENT_ID).map(|v| v.into())
+    pub fn sender_agent_id(&self) -> Result<&str, HeaderError> {
+        self.inner
+            .get(SENDER_AGENT_ID)
+            .map(|v| v.into())
+            .ok_or(HeaderError::HeaderNotFound(SENDER_AGENT_ID.to_string()))
     }
 }
 
