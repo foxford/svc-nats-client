@@ -58,7 +58,7 @@ pub enum SubscribeError {
 impl NatsClient for Client {
     async fn publish(
         &self,
-        subject: Subject,
+        subject: &Subject,
         payload: Vec<u8>,
         headers: HeaderMap,
     ) -> Result<(), PublishError> {

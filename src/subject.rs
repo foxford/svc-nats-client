@@ -1,7 +1,9 @@
+use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use uuid::Uuid;
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Subject {
     pub prefix: String,
     pub classroom_id: Uuid,
