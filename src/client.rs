@@ -37,19 +37,19 @@ pub async fn new(url: &str, creds: &str) -> io::Result<Client> {
 
 #[derive(Debug, thiserror::Error)]
 pub enum PublishError {
-    #[error("failed to publish message")]
+    #[error("failed to publish message: `{0}`")]
     PublishFailed(String),
-    #[error("failed to ack message")]
+    #[error("failed to ack message: `{0}`")]
     AckFailed(String),
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum SubscribeError {
-    #[error("failed to get stream")]
+    #[error("failed to get stream: `{0}`")]
     GettingStreamFailed(String),
-    #[error("failed to get consumer")]
+    #[error("failed to get consumer: `{0}`")]
     GettingConsumerFailed(String),
-    #[error("failed to create stream of messages")]
+    #[error("failed to create stream of messages: `{0}`")]
     StreamCreationFailed(String),
 }
 
