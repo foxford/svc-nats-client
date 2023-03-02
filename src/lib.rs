@@ -1,5 +1,4 @@
 use async_nats::jetstream::consumer::pull::Stream;
-use async_trait::async_trait;
 use std::{
     pin::Pin,
     task::{Context, Poll},
@@ -7,13 +6,16 @@ use std::{
 
 pub use crate::{
     client::{new, PublishError, SubscribeError},
-    headers::HeaderMap,
+    event::Event,
+    event_id::EventId,
+    headers::Headers,
     subject::Subject,
 };
-pub use async_nats::jetstream::AckKind;
-pub use async_nats::jetstream::Message;
+pub use async_nats::jetstream::{AckKind, Message};
 
 mod client;
+mod event;
+mod event_id;
 mod headers;
 mod subject;
 
@@ -27,14 +29,9 @@ impl futures::Stream for MessageStream {
     }
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 pub trait NatsClient: Send + Sync {
-    async fn publish(
-        &self,
-        subject: &Subject,
-        payload: Vec<u8>,
-        headers: HeaderMap,
-    ) -> Result<(), PublishError>;
+    async fn publish(&self, event: &Event) -> Result<(), PublishError>;
 
     async fn subscribe(
         &self,

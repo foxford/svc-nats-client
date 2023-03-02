@@ -1,15 +1,14 @@
-use crate::{headers::HeaderMap, MessageStream, NatsClient, Subject};
+use crate::{Event, MessageStream, NatsClient};
 use async_nats::{
     jetstream::{consumer::PullConsumer, Context},
-    Event,
+    Event as NatsEvent,
 };
-use async_trait::async_trait;
 use std::io;
 use tracing::{error, warn};
 
 #[derive(Clone)]
 pub struct Client {
-    pub jetstream: Context,
+    jetstream: Context,
 }
 
 pub async fn new(url: &str, creds: &str) -> io::Result<Client> {
@@ -17,10 +16,10 @@ pub async fn new(url: &str, creds: &str) -> io::Result<Client> {
         .await?
         .event_callback(|event| async move {
             match event {
-                Event::ServerError(error) => {
+                NatsEvent::ServerError(error) => {
                     error!(%error, "server error occurred");
                 }
-                Event::ClientError(error) => {
+                NatsEvent::ClientError(error) => {
                     error!(%error, "client error occurred");
                 }
                 event => {
@@ -54,16 +53,15 @@ pub enum SubscribeError {
     StreamCreationFailed(String),
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 impl NatsClient for Client {
-    async fn publish(
-        &self,
-        subject: &Subject,
-        payload: Vec<u8>,
-        headers: HeaderMap,
-    ) -> Result<(), PublishError> {
+    async fn publish(&self, event: &Event) -> Result<(), PublishError> {
         self.jetstream
-            .publish_with_headers(subject.to_string(), headers.into(), payload.into())
+            .publish_with_headers(
+                event.subject.to_string(),
+                event.headers.to_owned().into(),
+                event.payload.to_owned().into(),
+            )
             .await
             .map_err(|e| PublishError::PublishFailed(e.to_string()))?
             .await

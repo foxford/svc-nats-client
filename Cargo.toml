@@ -11,6 +11,7 @@ async-nats = "0.27"
 async-trait = "0.1"
 futures = "0.3"
 serde = "1.0"
+svc-agent = "0.19"
 thiserror = "1.0"
 tracing = "0.1"
 uuid = { version = "0.8", features = ["serde"] }

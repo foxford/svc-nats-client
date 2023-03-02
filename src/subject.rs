@@ -1,6 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter};
-use std::str::FromStr;
 use uuid::Uuid;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -20,8 +18,8 @@ impl Subject {
     }
 }
 
-impl Display for Subject {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+impl std::fmt::Display for Subject {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "{}.{}.{}",
@@ -38,11 +36,11 @@ pub enum SubjectError {
     ClassroomIdNotFound,
     #[error("failed to get entity_type from the subject")]
     EntityTypeNotFound,
-    #[error("failed to parse classroom_id")]
+    #[error("failed to parse classroom_id: `{0}`")]
     ClassroomIdParseFailed(String),
 }
 
-impl FromStr for Subject {
+impl std::str::FromStr for Subject {
     type Err = SubjectError;
 
     fn from_str(subject: &str) -> Result<Self, Self::Err> {
