@@ -30,8 +30,8 @@ pub enum EventIdError {
     InvalidEntityType,
     #[error("failed to get sequence_id from the string")]
     InvalidSequenceId,
-    #[error("failed to parse sequence_id: `{0}`")]
-    SequenceIdParseFailed(String),
+    #[error(transparent)]
+    SequenceIdParseFailed(#[from] std::num::ParseIntError),
 }
 
 impl<'a> TryFrom<&'a async_nats::HeaderValue> for EventId {
@@ -55,7 +55,7 @@ impl std::str::FromStr for EventId {
             .next()
             .ok_or(EventIdError::InvalidSequenceId)?
             .parse::<i64>()
-            .map_err(|e| EventIdError::SequenceIdParseFailed(e.to_string()))?;
+            .map_err(EventIdError::SequenceIdParseFailed)?;
 
         Ok(Self {
             entity_type,
