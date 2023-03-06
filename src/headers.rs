@@ -11,8 +11,8 @@ pub enum HeaderError {
     InvalidHeader(String),
     #[error("failed to parse event_id")]
     InvalidEventId(#[from] EventIdError),
-    #[error("failed to parse sender_id: `{0}`")]
-    SenderIdParseFailed(String),
+    #[error(transparent)]
+    SenderIdParseFailed(#[from] svc_agent::Error),
 }
 
 #[derive(Debug, Clone)]
@@ -72,8 +72,7 @@ impl TryFrom<async_nats::HeaderMap> for Headers {
             .get(async_nats::header::NATS_MESSAGE_ID)
             .ok_or(HeaderError::InvalidHeader(SENDER_AGENT_ID.to_string()))?
             .as_str();
-        let sender_id = AgentId::from_str(sender_id)
-            .map_err(|e| HeaderError::SenderIdParseFailed(e.to_string()))?;
+        let sender_id = AgentId::from_str(sender_id).map_err(HeaderError::SenderIdParseFailed)?;
 
         Ok(Self {
             event_id,

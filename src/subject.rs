@@ -36,8 +36,8 @@ pub enum SubjectError {
     ClassroomIdNotFound,
     #[error("failed to get entity_type from the subject")]
     EntityTypeNotFound,
-    #[error("failed to parse classroom_id: `{0}`")]
-    ClassroomIdParseFailed(String),
+    #[error(transparent)]
+    ClassroomIdParseFailed(#[from] uuid::Error),
 }
 
 impl std::str::FromStr for Subject {
@@ -55,8 +55,8 @@ impl std::str::FromStr for Subject {
             .ok_or(SubjectError::EntityTypeNotFound)?
             .to_string();
 
-        let classroom_id = Uuid::parse_str(classroom_id)
-            .map_err(|e| SubjectError::ClassroomIdParseFailed(e.to_string()))?;
+        let classroom_id =
+            Uuid::parse_str(classroom_id).map_err(SubjectError::ClassroomIdParseFailed)?;
 
         Ok(Self {
             prefix,
