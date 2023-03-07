@@ -1,7 +1,7 @@
 use crate::{Event, MessageStream, NatsClient};
 use async_nats::{
     jetstream::{consumer::PullConsumer, Context},
-    Event as NatsEvent,
+    Error, Event as NatsEvent,
 };
 use std::io;
 use tracing::{error, warn};
@@ -38,19 +38,19 @@ pub async fn new(url: &str, creds: &str) -> io::Result<Client> {
 #[derive(Debug, thiserror::Error)]
 pub enum PublishError {
     #[error("failed to publish message: `{0}`")]
-    PublishFailed(String),
+    PublishFailed(Error),
     #[error("failed to ack message: `{0}`")]
-    AckFailed(String),
+    AckFailed(Error),
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum SubscribeError {
     #[error("failed to get stream: `{0}`")]
-    GettingStreamFailed(String),
+    GettingStreamFailed(Error),
     #[error("failed to get consumer: `{0}`")]
-    GettingConsumerFailed(String),
+    GettingConsumerFailed(Error),
     #[error("failed to create stream of messages: `{0}`")]
-    StreamCreationFailed(String),
+    StreamCreationFailed(Error),
 }
 
 #[async_trait::async_trait]
@@ -63,9 +63,9 @@ impl NatsClient for Client {
                 event.payload.to_owned().into(),
             )
             .await
-            .map_err(|e| PublishError::PublishFailed(e.to_string()))?
+            .map_err(PublishError::PublishFailed)?
             .await
-            .map_err(|e| PublishError::AckFailed(e.to_string()))?;
+            .map_err(PublishError::AckFailed)?;
 
         Ok(())
     }
@@ -79,17 +79,17 @@ impl NatsClient for Client {
             .jetstream
             .get_stream(stream)
             .await
-            .map_err(|e| SubscribeError::GettingStreamFailed(e.to_string()))?;
+            .map_err(SubscribeError::GettingStreamFailed)?;
 
         let consumer: PullConsumer = stream
             .get_consumer(consumer)
             .await
-            .map_err(|e| SubscribeError::GettingConsumerFailed(e.to_string()))?;
+            .map_err(SubscribeError::GettingConsumerFailed)?;
 
         let stream = consumer
             .messages()
             .await
-            .map_err(|e| SubscribeError::StreamCreationFailed(e.to_string()))?;
+            .map_err(SubscribeError::StreamCreationFailed)?;
 
         Ok(MessageStream(stream))
     }
