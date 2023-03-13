@@ -1,16 +1,17 @@
-use crate::event_id::{EventId, EventIdError};
+use crate::event_id::EventId;
 use std::str::FromStr;
 use svc_agent::AgentId;
 
 const SENDER_AGENT_ID: &str = "Sender-Agent-Id";
 const ENTITY_EVENT_SEQUENCE_ID: &str = "Entity-Event-Sequence-Id";
+const ENTITY_EVENT_TYPE: &str = "Entity-Event-Type";
 
 #[derive(Debug, thiserror::Error)]
 pub enum HeaderError {
     #[error("failed to get `{0}`")]
     InvalidHeader(String),
-    #[error("failed to parse event_id")]
-    InvalidEventId(#[from] EventIdError),
+    #[error("failed to parse entity sequence id")]
+    InvalidSequenceId(#[from] std::num::ParseIntError),
     #[error(transparent)]
     SenderIdParseFailed(#[from] svc_agent::Error),
 }
@@ -46,6 +47,8 @@ impl From<Headers> for async_nats::HeaderMap {
             async_nats::header::NATS_MESSAGE_ID,
             value.event_id.to_string().as_str(),
         );
+
+        headers.insert(ENTITY_EVENT_TYPE, value.event_id.entity_type());
         headers.insert(
             ENTITY_EVENT_SEQUENCE_ID,
             value.event_id.sequence_id().to_string().as_str(),
@@ -60,16 +63,23 @@ impl TryFrom<async_nats::HeaderMap> for Headers {
     type Error = HeaderError;
 
     fn try_from(value: async_nats::HeaderMap) -> Result<Self, Self::Error> {
-        let event_id =
-            value
-                .get(async_nats::header::NATS_MESSAGE_ID)
-                .ok_or(HeaderError::InvalidHeader(
-                    async_nats::header::NATS_MESSAGE_ID.to_string(),
-                ))?;
-        let event_id = event_id.try_into().map_err(HeaderError::InvalidEventId)?;
+        let entity_type = value
+            .get(ENTITY_EVENT_TYPE)
+            .ok_or(HeaderError::InvalidHeader(ENTITY_EVENT_TYPE.to_string()))?
+            .to_string();
+
+        let sequence_id = value
+            .get(ENTITY_EVENT_SEQUENCE_ID)
+            .ok_or(HeaderError::InvalidHeader(
+                ENTITY_EVENT_SEQUENCE_ID.to_string(),
+            ))?
+            .as_str()
+            .parse::<i64>()?;
+
+        let event_id = (entity_type, sequence_id).into();
 
         let sender_id = value
-            .get(async_nats::header::NATS_MESSAGE_ID)
+            .get(SENDER_AGENT_ID)
             .ok_or(HeaderError::InvalidHeader(SENDER_AGENT_ID.to_string()))?
             .as_str();
         let sender_id = AgentId::from_str(sender_id).map_err(HeaderError::SenderIdParseFailed)?;
