@@ -6,6 +6,7 @@ use std::{
 
 pub use crate::{
     client::{new, PublishError, SubscribeError},
+    config::Config,
     event::Event,
     event_id::EventId,
     headers::Headers,
@@ -14,6 +15,7 @@ pub use crate::{
 pub use async_nats::jetstream::{AckKind, Message};
 
 mod client;
+mod config;
 mod event;
 mod event_id;
 mod headers;
