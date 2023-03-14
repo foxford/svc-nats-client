@@ -4,4 +4,6 @@ use serde::Deserialize;
 pub struct Config {
     pub url: String,
     pub creds: String,
+    pub stream: Option<String>,
+    pub consumer: Option<String>,
 }
