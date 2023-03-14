@@ -26,6 +26,6 @@ impl From<(String, i64)> for EventId {
 
 impl std::fmt::Display for EventId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}.{}", self.entity_type, self.sequence_id)
+        write!(f, "{}_{}", self.entity_type, self.sequence_id)
     }
 }
