@@ -5,7 +5,7 @@ use crate::{
     MessageStream, NatsClient,
 };
 use async_nats::{
-    jetstream::{consumer::PullConsumer, AckKind::Term, Context, Message},
+    jetstream::{consumer::PullConsumer, AckKind, Context, Message},
     ConnectError, Error, Event as NatsEvent,
 };
 use std::str::FromStr;
@@ -16,28 +16,30 @@ pub struct Client {
     jetstream: Context,
 }
 
-pub async fn new(url: &str, creds: &str) -> Result<Client, ConnectError> {
-    let client = async_nats::ConnectOptions::with_credentials_file(creds.into())
-        .await?
-        .event_callback(|event| async move {
-            match event {
-                NatsEvent::ServerError(error) => {
-                    error!(%error, "server error occurred");
+impl Client {
+    pub async fn new(url: &str, creds: &str) -> Result<Self, ConnectError> {
+        let client = async_nats::ConnectOptions::with_credentials_file(creds.into())
+            .await?
+            .event_callback(|event| async move {
+                match event {
+                    NatsEvent::ServerError(error) => {
+                        error!(%error, "server error occurred");
+                    }
+                    NatsEvent::ClientError(error) => {
+                        error!(%error, "client error occurred");
+                    }
+                    event => {
+                        warn!(%event, "event occurred")
+                    }
                 }
-                NatsEvent::ClientError(error) => {
-                    error!(%error, "client error occurred");
-                }
-                event => {
-                    warn!(%event, "event occurred")
-                }
-            }
-        })
-        .connect(url)
-        .await?;
+            })
+            .connect(url)
+            .await?;
 
-    let jetstream = async_nats::jetstream::new(client);
+        let jetstream = async_nats::jetstream::new(client);
 
-    Ok(Client { jetstream })
+        Ok(Self { jetstream })
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -126,7 +128,7 @@ impl NatsClient for Client {
         self.publish(&event).await?;
 
         message
-            .ack_with(Term)
+            .ack_with(AckKind::Term)
             .await
             .map_err(TermMessageError::AckTermFailed)
     }

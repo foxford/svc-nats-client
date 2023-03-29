@@ -5,7 +5,7 @@ use std::{
 };
 
 pub use crate::{
-    client::{new, PublishError, SubscribeError, TermMessageError},
+    client::{Client, PublishError, SubscribeError, TermMessageError},
     config::Config,
     event::Event,
     event_id::EventId,
