@@ -5,7 +5,7 @@ use std::{
 };
 
 pub use crate::{
-    client::{new, PublishError, SubscribeError},
+    client::{new, PublishError, SubscribeError, TermMessageError},
     config::Config,
     event::Event,
     event_id::EventId,
@@ -42,4 +42,6 @@ pub trait NatsClient: Send + Sync {
         stream: &str,
         consumer: &str,
     ) -> Result<MessageStream, SubscribeError>;
+
+    async fn term_message(&self, message: Message) -> Result<(), TermMessageError>;
 }

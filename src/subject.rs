@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub(crate) const TERMINATED_PREFIX: &str = "terminated";
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Subject {
     pub prefix: String,
@@ -15,6 +17,10 @@ impl Subject {
             classroom_id,
             entity_type,
         }
+    }
+
+    pub fn prefix(self, prefix: String) -> Self {
+        Self { prefix, ..self }
     }
 }
 
