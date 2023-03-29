@@ -21,8 +21,6 @@ mod event_id;
 mod headers;
 mod subject;
 
-pub mod error;
-
 pub struct MessageStream(Stream);
 
 impl futures::Stream for MessageStream {
