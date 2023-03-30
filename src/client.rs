@@ -2,7 +2,7 @@ use crate::{
     event::Event,
     headers::{HeaderError, Headers},
     subject::{Subject, SubjectError, TERMINATED_PREFIX},
-    MessageStream, NatsClient,
+    Config, MessageStream, NatsClient,
 };
 use async_nats::{
     jetstream::{consumer::PullConsumer, AckKind, Context, Message},
@@ -14,10 +14,12 @@ use tracing::{error, warn};
 #[derive(Clone)]
 pub struct Client {
     jetstream: Context,
+    config: Config,
 }
 
 impl Client {
-    pub async fn new(url: &str, creds: &str) -> Result<Self, ConnectError> {
+    pub async fn new(config: Config) -> Result<Self, ConnectError> {
+        let creds: &str = config.creds.as_ref();
         let client = async_nats::ConnectOptions::with_credentials_file(creds.into())
             .await?
             .event_callback(|event| async move {
@@ -33,12 +35,12 @@ impl Client {
                     }
                 }
             })
-            .connect(url)
+            .connect(&config.url)
             .await?;
 
         let jetstream = async_nats::jetstream::new(client);
 
-        Ok(Self { jetstream })
+        Ok(Self { jetstream, config })
     }
 }
 
@@ -52,6 +54,8 @@ pub enum PublishError {
 
 #[derive(Debug, thiserror::Error)]
 pub enum SubscribeError {
+    #[error("config for subscription is not found")]
+    SubscribeConfigNotFound,
     #[error("failed to get stream: `{0}`")]
     GettingStreamFailed(Error),
     #[error("failed to get consumer: `{0}`")]
@@ -89,23 +93,28 @@ impl NatsClient for Client {
         Ok(())
     }
 
-    async fn subscribe(
-        &self,
-        stream: &str,
-        consumer: &str,
-    ) -> Result<MessageStream, SubscribeError> {
+    async fn subscribe(&self) -> Result<MessageStream, SubscribeError> {
+        let config = self
+            .config
+            .subscribe
+            .as_ref()
+            .ok_or(SubscribeError::SubscribeConfigNotFound)?;
+
         let stream = self
             .jetstream
-            .get_stream(stream)
+            .get_stream(&config.stream)
             .await
             .map_err(SubscribeError::GettingStreamFailed)?;
 
         let consumer: PullConsumer = stream
-            .get_consumer(consumer)
+            .get_consumer(&config.consumer)
             .await
             .map_err(SubscribeError::GettingConsumerFailed)?;
 
         let stream = consumer
+            .stream()
+            .max_messages_per_batch(config.batch)
+            .heartbeat(config.idle_heartbeat)
             .messages()
             .await
             .map_err(SubscribeError::StreamCreationFailed)?;

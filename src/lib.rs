@@ -35,11 +35,7 @@ impl futures::Stream for MessageStream {
 pub trait NatsClient: Send + Sync {
     async fn publish(&self, event: &Event) -> Result<(), PublishError>;
 
-    async fn subscribe(
-        &self,
-        stream: &str,
-        consumer: &str,
-    ) -> Result<MessageStream, SubscribeError>;
+    async fn subscribe(&self) -> Result<MessageStream, SubscribeError>;
 
     async fn term_message(&self, message: Message) -> Result<(), TermMessageError>;
 }
