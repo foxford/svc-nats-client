@@ -4,11 +4,13 @@ use crate::{
     subject::{Subject, SubjectError, TERMINATED_PREFIX},
     Config, MessageStream, NatsClient,
 };
+use anyhow::anyhow;
 use async_nats::{
     jetstream::{consumer::PullConsumer, AckKind, Context, Message},
     ConnectError, Error, Event as NatsEvent,
 };
 use std::str::FromStr;
+use std::sync::Arc;
 use tracing::{error, warn};
 
 #[derive(Clone)]
@@ -23,16 +25,18 @@ impl Client {
         let client = async_nats::ConnectOptions::with_credentials_file(creds.into())
             .await?
             .event_callback(|event| async move {
-                match event {
-                    NatsEvent::ServerError(error) => {
-                        error!(%error, "server error occurred");
-                    }
-                    NatsEvent::ClientError(error) => {
-                        error!(%error, "client error occurred");
-                    }
+                let error = match event {
+                    NatsEvent::ServerError(err) => anyhow!(err),
+                    NatsEvent::ClientError(err) => anyhow!(err),
                     event => {
-                        warn!(%event, "event occurred")
+                        warn!(%event, "nats connection status");
+                        return;
                     }
+                };
+
+                error!(%error);
+                if let Err(err) = svc_error::extension::sentry::send(Arc::new(error)) {
+                    error!(%err);
                 }
             })
             .connect(&config.url)
@@ -122,7 +126,7 @@ impl NatsClient for Client {
         Ok(MessageStream(stream))
     }
 
-    async fn term_message(&self, message: Message) -> Result<(), TermMessageError> {
+    async fn terminate(&self, message: Message) -> Result<(), TermMessageError> {
         let headers = Headers::try_from(message.headers.clone().unwrap_or_default())?;
         let old_subject = Subject::from_str(&message.subject)?;
         let old_prefix = old_subject.prefix.clone();

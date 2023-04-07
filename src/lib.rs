@@ -37,5 +37,5 @@ pub trait NatsClient: Send + Sync {
 
     async fn subscribe(&self) -> Result<MessageStream, SubscribeError>;
 
-    async fn term_message(&self, message: Message) -> Result<(), TermMessageError>;
+    async fn terminate(&self, message: Message) -> Result<(), TermMessageError>;
 }
