@@ -14,9 +14,10 @@ pub use crate::{
 };
 pub use async_nats::jetstream::{AckKind, Message};
 
+pub mod event;
+
 mod client;
 mod config;
-mod event;
 mod event_id;
 mod headers;
 mod subject;

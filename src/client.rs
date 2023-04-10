@@ -1,5 +1,5 @@
 use crate::{
-    event::Event,
+    event::{Builder as EventBuilder, Event},
     headers::{HeaderError, Headers},
     subject::{Subject, SubjectError, TERMINATED_PREFIX},
     Config, MessageStream, NatsClient,
@@ -85,9 +85,9 @@ impl NatsClient for Client {
     async fn publish(&self, event: &Event) -> Result<(), PublishError> {
         self.jetstream
             .publish_with_headers(
-                event.subject.to_string(),
-                event.headers.to_owned().into(),
-                event.payload.to_owned().into(),
+                event.subject().to_string(),
+                event.headers().to_owned().into(),
+                event.payload().to_owned().into(),
             )
             .await
             .map_err(PublishError::PublishFailed)?
@@ -129,14 +129,18 @@ impl NatsClient for Client {
     async fn terminate(&self, message: Message) -> Result<(), TermMessageError> {
         let headers = Headers::try_from(message.headers.clone().unwrap_or_default())?;
         let old_subject = Subject::from_str(&message.subject)?;
-        let old_prefix = old_subject.prefix.clone();
-        let new_subject = old_subject.prefix(format!("{TERMINATED_PREFIX}.{old_prefix}"));
-        let event = Event::new(
+        let new_subject = Subject::new(
+            format!("{}.{}", TERMINATED_PREFIX, old_subject.prefix()),
+            old_subject.classroom_id(),
+            old_subject.entity_type().into(),
+        );
+        let event = EventBuilder::new(
             new_subject,
             message.payload.to_vec(),
             headers.event_id().clone(),
             headers.sender_id().clone(),
-        );
+        )
+        .build();
 
         self.publish(&event).await?;
 

@@ -5,9 +5,9 @@ pub(crate) const TERMINATED_PREFIX: &str = "terminated";
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Subject {
-    pub prefix: String,
-    pub classroom_id: Uuid,
-    pub entity_type: String,
+    prefix: String,
+    classroom_id: Uuid,
+    entity_type: String,
 }
 
 impl Subject {
@@ -19,8 +19,16 @@ impl Subject {
         }
     }
 
-    pub fn prefix(self, prefix: String) -> Self {
-        Self { prefix, ..self }
+    pub fn prefix(&self) -> &str {
+        &self.prefix
+    }
+
+    pub fn classroom_id(&self) -> Uuid {
+        self.classroom_id
+    }
+
+    pub fn entity_type(&self) -> &str {
+        &self.entity_type
     }
 }
 

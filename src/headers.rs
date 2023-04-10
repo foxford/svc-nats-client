@@ -27,14 +27,6 @@ pub struct Headers {
 }
 
 impl Headers {
-    pub(crate) fn new(event_id: EventId, sender_id: AgentId) -> Self {
-        Self {
-            event_id,
-            sender_id,
-            is_internal: true,
-        }
-    }
-
     pub fn sender_id(&self) -> &AgentId {
         &self.sender_id
     }
@@ -46,9 +38,36 @@ impl Headers {
     pub fn is_internal(&self) -> bool {
         self.is_internal
     }
+}
 
-    pub fn set_is_internal(&mut self, value: bool) {
-        self.is_internal = value
+pub(crate) struct Builder {
+    event_id: EventId,
+    sender_id: AgentId,
+    is_internal: bool,
+}
+
+impl Builder {
+    pub(crate) fn new(event_id: EventId, sender_id: AgentId) -> Self {
+        Self {
+            event_id,
+            sender_id,
+            is_internal: true,
+        }
+    }
+
+    pub(crate) fn internal(self, is_internal: bool) -> Self {
+        Self {
+            is_internal,
+            ..self
+        }
+    }
+
+    pub(crate) fn build(self) -> Headers {
+        Headers {
+            event_id: self.event_id,
+            sender_id: self.sender_id,
+            is_internal: self.is_internal,
+        }
     }
 }
 
@@ -56,17 +75,18 @@ impl From<Headers> for async_nats::HeaderMap {
     fn from(value: Headers) -> Self {
         let mut headers = async_nats::HeaderMap::new();
 
+        let event_id = value.event_id();
         headers.insert(
             async_nats::header::NATS_MESSAGE_ID,
-            value.event_id.to_string().as_str(),
+            event_id.to_string().as_str(),
         );
-        headers.insert(ENTITY_EVENT_TYPE, value.event_id.entity_type());
+        headers.insert(ENTITY_EVENT_TYPE, event_id.entity_type());
         headers.insert(
             ENTITY_EVENT_SEQUENCE_ID,
-            value.event_id.sequence_id().to_string().as_str(),
+            event_id.sequence_id().to_string().as_str(),
         );
-        headers.insert(SENDER_AGENT_ID, value.sender_id.to_string().as_str());
-        headers.insert(IS_INTERNAL, value.is_internal.to_string().as_str());
+        headers.insert(SENDER_AGENT_ID, value.sender_id().to_string().as_str());
+        headers.insert(IS_INTERNAL, value.is_internal().to_string().as_str());
 
         headers
     }
