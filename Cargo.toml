@@ -14,7 +14,7 @@ futures = "0.3"
 humantime-serde = "1"
 reqwest = "0.11"
 serde = "1.0"
-svc-agent = "0.19"
+svc-agent = "0.20"
 svc-error = { version = "0.4", features = ["sentry-extension"] }
 thiserror = "1.0"
 tracing = "0.1"
