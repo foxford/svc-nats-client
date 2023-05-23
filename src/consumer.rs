@@ -44,7 +44,7 @@ pub fn run<H, Fut>(
     cfg: ConsumerConfig,
     shutdown_rx: watch::Receiver<()>,
     handle_message: H,
-) -> Result<JoinHandle<Result<(), SubscribeError>>>
+) -> JoinHandle<Result<(), SubscribeError>>
 where
     H: Fn(&Message) -> Fut + Send + Sync + 'static,
     Fut: std::future::Future<Output = HandleMessageOutcome> + std::marker::Send,
@@ -94,7 +94,7 @@ where
         Ok::<_, SubscribeError>(())
     });
 
-    Ok(handle)
+    handle
 }
 
 enum CompletionReason {
