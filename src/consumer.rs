@@ -39,7 +39,7 @@ pub enum HandleMessageOutcome {
     WontProcess,
 }
 
-pub async fn run<H, Fut>(
+pub fn run<H, Fut>(
     nats_client: Client,
     cfg: ConsumerConfig,
     shutdown_rx: watch::Receiver<()>,
