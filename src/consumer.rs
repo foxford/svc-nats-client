@@ -49,7 +49,7 @@ where
     H: Fn(&Message) -> Fut + Send + Sync + 'static,
     Fut: std::future::Future<Output = HandleMessageOutcome> + std::marker::Send,
 {
-    let handle = tokio::spawn(async move {
+    tokio::spawn(async move {
         // In case of subscription errors we don't want to spam sentry
         let mut log_sentry = LogSentry::new(&cfg);
 
@@ -92,9 +92,7 @@ where
         }
 
         Ok::<_, SubscribeError>(())
-    });
-
-    handle
+    })
 }
 
 enum CompletionReason {
