@@ -6,7 +6,7 @@ use std::{
 
 pub use crate::{
     client::{Client, PublishError, SubscribeError, TermMessageError},
-    config::Config,
+    config::{Config, ConsumerConfig},
     event::Event,
     headers::Headers,
     subject::Subject,
