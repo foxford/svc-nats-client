@@ -194,7 +194,7 @@ fn next_suspend_interval(retry_count: u32, nats_consumer_config: &ConsumerConfig
     Duration::from_secs(seconds)
 }
 
-pub fn notify_sentry(e: Error) {
+fn notify_sentry(e: Error) {
     if let Err(e) = sentry::send(Arc::new(anyhow!(e))) {
         tracing::error!("Failed to send error to sentry, reason = {:?}", e);
     }
