@@ -22,3 +22,15 @@ pub struct SubscribeDurableConfig {
 pub struct SubscribeEphemeralConfig {
     pub stream: String,
 }
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct ConsumerConfig {
+    #[serde(with = "humantime_serde")]
+    pub suspend_interval: Duration,
+    #[serde(with = "humantime_serde")]
+    pub max_suspend_interval: Duration,
+    #[serde(with = "humantime_serde")]
+    pub suspend_sentry_interval: Duration,
+    #[serde(with = "humantime_serde")]
+    pub resubscribe_interval: Duration,
+}

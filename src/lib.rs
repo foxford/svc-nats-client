@@ -8,7 +8,6 @@ pub use crate::{
     client::{Client, PublishError, SubscribeError, TermMessageError},
     config::Config,
     event::Event,
-    event_id::EventId,
     headers::Headers,
     subject::Subject,
 };
@@ -17,11 +16,11 @@ pub use async_nats::jetstream::{
     AckKind, Message,
 };
 
+pub mod consumer;
 pub mod event;
 
 mod client;
 mod config;
-mod event_id;
 mod headers;
 mod subject;
 

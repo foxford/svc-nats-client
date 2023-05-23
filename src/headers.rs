@@ -1,6 +1,6 @@
-use crate::event_id::EventId;
 use std::str::FromStr;
 use svc_agent::AgentId;
+use svc_events::EventId;
 
 const SENDER_ID: &str = "Sender-Agent-Id";
 const ENTITY_EVENT_SEQUENCE_ID: &str = "Entity-Event-Sequence-Id";
