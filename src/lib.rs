@@ -47,5 +47,5 @@ pub trait NatsClient: Send + Sync {
         ack_policy: AckPolicy,
     ) -> Result<Messages, SubscribeError>;
 
-    async fn terminate(&self, message: Message) -> Result<(), TermMessageError>;
+    async fn terminate(&self, message: &Message) -> Result<(), TermMessageError>;
 }

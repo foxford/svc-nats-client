@@ -46,7 +46,7 @@ pub fn run<H, Fut>(
     handle_message: H,
 ) -> JoinHandle<Result<(), SubscribeError>>
 where
-    H: Fn(&Message) -> Fut + Send + Sync + 'static,
+    H: Fn(Arc<Message>) -> Fut + Send + Sync + 'static,
     Fut: std::future::Future<Output = HandleMessageOutcome> + std::marker::Send,
 {
     tokio::spawn(async move {
@@ -109,7 +109,7 @@ async fn handle_stream<H, Fut>(
     log_sentry: &mut LogSentry,
 ) -> CompletionReason
 where
-    H: Fn(&Message) -> Fut,
+    H: Fn(Arc<Message>) -> Fut,
     Fut: std::future::Future<Output = HandleMessageOutcome>,
 {
     let mut retry_count = 0;
@@ -144,13 +144,14 @@ where
                         return CompletionReason::StreamClosed;
                     }
                 };
+                let message = Arc::new(message);
 
                 tracing::info!(
                     "got a message from nats, subject: {:?}, payload: {:?}, headers: {:?}",
                     message.subject, message.payload, message.headers
                 );
 
-                let outcome = handle_message(&message).await;
+                let outcome = handle_message(message.clone()).await;
                 match outcome {
                     HandleMessageOutcome::Processed => {
                         retry_count = 0;
@@ -169,7 +170,7 @@ where
                         suspend_interval = Some(interval);
                     }
                     HandleMessageOutcome::WontProcess => {
-                        if let Err(err) = nats_client.terminate(message).await {
+                        if let Err(err) = nats_client.terminate(&message).await {
                             log_sentry.log_notify(Error::from(anyhow!(err).context("failed to terminate msg")));
                         }
                     }
