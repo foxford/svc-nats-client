@@ -5,6 +5,7 @@ use svc_events::EventId;
 const SENDER_ID: &str = "Sender-Agent-Id";
 const ENTITY_EVENT_SEQUENCE_ID: &str = "Entity-Event-Sequence-Id";
 const ENTITY_EVENT_TYPE: &str = "Entity-Event-Type";
+const ENTITY_EVENT_OPERATION: &str = "Entity-Event-Operation";
 const IS_INTERNAL: &str = "Is-Internal";
 const RECEIVER_ID: &str = "Receiver-Agent-Id";
 
@@ -136,6 +137,13 @@ impl TryFrom<async_nats::HeaderMap> for Headers {
             .ok_or(HeaderError::InvalidHeader(ENTITY_EVENT_TYPE.to_string()))?
             .to_string();
 
+        let operation = value
+            .get(ENTITY_EVENT_OPERATION)
+            .ok_or(HeaderError::InvalidHeader(
+                ENTITY_EVENT_OPERATION.to_string(),
+            ))?
+            .to_string();
+
         let sequence_id = value
             .get(ENTITY_EVENT_SEQUENCE_ID)
             .ok_or(HeaderError::InvalidHeader(
@@ -144,7 +152,7 @@ impl TryFrom<async_nats::HeaderMap> for Headers {
             .as_str()
             .parse::<i64>()?;
 
-        let event_id = (entity_type, sequence_id).into();
+        let event_id = (entity_type, operation, sequence_id).into();
 
         let sender_id = value
             .get(SENDER_ID)
