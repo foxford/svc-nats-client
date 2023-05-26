@@ -2,11 +2,11 @@ use crate::event_id::EventId;
 use std::str::FromStr;
 use svc_agent::AgentId;
 
-const SENDER_AGENT_ID: &str = "Sender-Agent-Id";
+const SENDER_ID: &str = "Sender-Agent-Id";
 const ENTITY_EVENT_SEQUENCE_ID: &str = "Entity-Event-Sequence-Id";
 const ENTITY_EVENT_TYPE: &str = "Entity-Event-Type";
 const IS_INTERNAL: &str = "Is-Internal";
-const RECEIVER_AGENT_ID: &str = "Receiver-Agent-Id";
+const RECEIVER_ID: &str = "Receiver-Agent-Id";
 
 #[derive(Debug, thiserror::Error)]
 pub enum HeaderError {
@@ -101,11 +101,11 @@ impl From<Headers> for async_nats::HeaderMap {
             ENTITY_EVENT_SEQUENCE_ID,
             event_id.sequence_id().to_string().as_str(),
         );
-        headers.insert(SENDER_AGENT_ID, value.sender_id().to_string().as_str());
+        headers.insert(SENDER_ID, value.sender_id().to_string().as_str());
         headers.insert(IS_INTERNAL, value.is_internal().to_string().as_str());
 
         if let Some(receiver_id) = value.receiver_id() {
-            headers.insert(RECEIVER_AGENT_ID, receiver_id.to_string().as_str());
+            headers.insert(RECEIVER_ID, receiver_id.to_string().as_str());
         }
 
         headers
@@ -132,8 +132,8 @@ impl TryFrom<async_nats::HeaderMap> for Headers {
         let event_id = (entity_type, sequence_id).into();
 
         let sender_id = value
-            .get(SENDER_AGENT_ID)
-            .ok_or(HeaderError::InvalidHeader(SENDER_AGENT_ID.to_string()))?
+            .get(SENDER_ID)
+            .ok_or(HeaderError::InvalidHeader(SENDER_ID.to_string()))?
             .as_str();
         let sender_id = AgentId::from_str(sender_id).map_err(HeaderError::AgentIdParseFailed)?;
 
@@ -143,7 +143,7 @@ impl TryFrom<async_nats::HeaderMap> for Headers {
             .as_str()
             .parse::<bool>()?;
 
-        let receiver_agent_id = value.get(RECEIVER_AGENT_ID).map(|h| h.as_str());
+        let receiver_agent_id = value.get(RECEIVER_ID).map(|h| h.as_str());
         let receiver_id = if let Some(receiver_id) = receiver_agent_id {
             let agent_id =
                 AgentId::from_str(receiver_id).map_err(HeaderError::AgentIdParseFailed)?;

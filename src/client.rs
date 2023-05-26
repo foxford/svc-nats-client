@@ -71,8 +71,8 @@ pub enum SubscribeError {
     GettingConsumerFailed(Error),
     #[error("failed to create stream of messages: `{0}`")]
     StreamCreationFailed(Error),
-    #[error("failed to create push consumer: `{0}`")]
-    PushConsumerCreationFailed(Error),
+    #[error("failed to create ephemeral consumer: `{0}`")]
+    EphemeralConsumerCreationFailed(Error),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -161,7 +161,7 @@ impl NatsClient for Client {
                 ..Default::default()
             })
             .await
-            .map_err(SubscribeError::PushConsumerCreationFailed)?;
+            .map_err(SubscribeError::EphemeralConsumerCreationFailed)?;
 
         let messages = consumer
             .messages()
