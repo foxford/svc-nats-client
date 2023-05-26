@@ -6,6 +6,7 @@ const SENDER_AGENT_ID: &str = "Sender-Agent-Id";
 const ENTITY_EVENT_SEQUENCE_ID: &str = "Entity-Event-Sequence-Id";
 const ENTITY_EVENT_TYPE: &str = "Entity-Event-Type";
 const IS_INTERNAL: &str = "Is-Internal";
+const RECEIVER_AGENT_ID: &str = "Receiver-Agent-Id";
 
 #[derive(Debug, thiserror::Error)]
 pub enum HeaderError {
@@ -14,7 +15,7 @@ pub enum HeaderError {
     #[error("failed to parse entity_sequence_id")]
     InvalidSequenceId(#[from] std::num::ParseIntError),
     #[error(transparent)]
-    SenderIdParseFailed(#[from] svc_agent::Error),
+    AgentIdParseFailed(#[from] svc_agent::Error),
     #[error("failed to parse is_internal")]
     InvalidIsInternal(#[from] std::str::ParseBoolError),
 }
@@ -24,6 +25,7 @@ pub struct Headers {
     event_id: EventId,
     sender_id: AgentId,
     is_internal: bool,
+    receiver_id: Option<AgentId>,
 }
 
 impl Headers {
@@ -38,12 +40,17 @@ impl Headers {
     pub fn is_internal(&self) -> bool {
         self.is_internal
     }
+
+    pub fn receiver_id(&self) -> &Option<AgentId> {
+        &self.receiver_id
+    }
 }
 
 pub(crate) struct Builder {
     event_id: EventId,
     sender_id: AgentId,
     is_internal: bool,
+    receiver_id: Option<AgentId>,
 }
 
 impl Builder {
@@ -52,6 +59,7 @@ impl Builder {
             event_id,
             sender_id,
             is_internal: true,
+            receiver_id: None,
         }
     }
 
@@ -62,11 +70,19 @@ impl Builder {
         }
     }
 
+    pub(crate) fn receiver_id(self, receiver_id: AgentId) -> Self {
+        Self {
+            receiver_id: Some(receiver_id),
+            ..self
+        }
+    }
+
     pub(crate) fn build(self) -> Headers {
         Headers {
             event_id: self.event_id,
             sender_id: self.sender_id,
             is_internal: self.is_internal,
+            receiver_id: self.receiver_id,
         }
     }
 }
@@ -87,6 +103,10 @@ impl From<Headers> for async_nats::HeaderMap {
         );
         headers.insert(SENDER_AGENT_ID, value.sender_id().to_string().as_str());
         headers.insert(IS_INTERNAL, value.is_internal().to_string().as_str());
+
+        if let Some(receiver_id) = value.receiver_id() {
+            headers.insert(RECEIVER_AGENT_ID, receiver_id.to_string().as_str());
+        }
 
         headers
     }
@@ -115,7 +135,7 @@ impl TryFrom<async_nats::HeaderMap> for Headers {
             .get(SENDER_AGENT_ID)
             .ok_or(HeaderError::InvalidHeader(SENDER_AGENT_ID.to_string()))?
             .as_str();
-        let sender_id = AgentId::from_str(sender_id).map_err(HeaderError::SenderIdParseFailed)?;
+        let sender_id = AgentId::from_str(sender_id).map_err(HeaderError::AgentIdParseFailed)?;
 
         let is_internal = value
             .get(IS_INTERNAL)
@@ -123,10 +143,21 @@ impl TryFrom<async_nats::HeaderMap> for Headers {
             .as_str()
             .parse::<bool>()?;
 
+        let receiver_agent_id = value.get(RECEIVER_AGENT_ID).map(|h| h.as_str());
+        let receiver_id = if let Some(receiver_id) = receiver_agent_id {
+            let agent_id =
+                AgentId::from_str(receiver_id).map_err(HeaderError::AgentIdParseFailed)?;
+
+            Some(agent_id)
+        } else {
+            None
+        };
+
         Ok(Self {
             event_id,
             sender_id,
             is_internal,
+            receiver_id,
         })
     }
 }

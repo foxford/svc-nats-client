@@ -12,7 +12,10 @@ pub use crate::{
     headers::Headers,
     subject::Subject,
 };
-pub use async_nats::jetstream::{AckKind, Message};
+pub use async_nats::jetstream::{
+    consumer::{push::Messages, AckPolicy, DeliverPolicy},
+    AckKind, Message,
+};
 
 pub mod event;
 
@@ -36,7 +39,14 @@ impl futures::Stream for MessageStream {
 pub trait NatsClient: Send + Sync {
     async fn publish(&self, event: &Event) -> Result<(), PublishError>;
 
-    async fn subscribe(&self) -> Result<MessageStream, SubscribeError>;
+    async fn subscribe_durable(&self) -> Result<MessageStream, SubscribeError>;
+
+    async fn subscribe_ephemeral(
+        &self,
+        subject: Subject,
+        deliver_policy: DeliverPolicy,
+        ack_policy: AckPolicy,
+    ) -> Result<Messages, SubscribeError>;
 
     async fn terminate(&self, message: Message) -> Result<(), TermMessageError>;
 }
