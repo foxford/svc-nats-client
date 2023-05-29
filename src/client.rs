@@ -6,13 +6,12 @@ use crate::{
 };
 use anyhow::anyhow;
 
-use async_nats::jetstream::consumer::{AckPolicy, PushConsumer};
 use async_nats::{
     jetstream::{
-        consumer::{self, DeliverPolicy, PullConsumer},
+        consumer::{self, AckPolicy, DeliverPolicy, PullConsumer, PushConsumer},
         AckKind, Context, Message,
     },
-    ConnectError, Error, Event as NatsEvent,
+    Client as AsyncNatsClient, ConnectError, Error, Event as NatsEvent,
 };
 use std::str::FromStr;
 use std::sync::Arc;
@@ -20,6 +19,7 @@ use tracing::{error, warn};
 
 #[derive(Clone)]
 pub struct Client {
+    inner: AsyncNatsClient,
     jetstream: Context,
     config: Config,
 }
@@ -47,9 +47,13 @@ impl Client {
             .connect(&config.url)
             .await?;
 
-        let jetstream = async_nats::jetstream::new(client);
+        let jetstream = async_nats::jetstream::new(client.clone());
 
-        Ok(Self { jetstream, config })
+        Ok(Self {
+            inner: client,
+            jetstream,
+            config,
+        })
     }
 }
 
@@ -155,7 +159,8 @@ impl NatsClient for Client {
 
         let consumer: PushConsumer = stream
             .create_consumer(consumer::push::Config {
-                deliver_subject: subject.to_string(),
+                deliver_subject: self.inner.new_inbox(),
+                filter_subject: subject.to_string(),
                 ack_policy,
                 deliver_policy,
                 ..Default::default()

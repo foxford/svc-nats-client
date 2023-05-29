@@ -33,6 +33,7 @@ pub struct Builder {
     sender_id: AgentId,
     is_internal: bool,
     receiver_id: Option<AgentId>,
+    deduplication: bool,
 }
 
 impl Builder {
@@ -44,6 +45,7 @@ impl Builder {
             sender_id,
             is_internal: true,
             receiver_id: None,
+            deduplication: true,
         }
     }
 
@@ -61,9 +63,17 @@ impl Builder {
         }
     }
 
+    pub fn deduplication(self, deduplication: bool) -> Self {
+        Self {
+            deduplication,
+            ..self
+        }
+    }
+
     pub fn build(self) -> Event {
-        let mut builder =
-            HeadersBuilder::new(self.event_id, self.sender_id).internal(self.is_internal);
+        let mut builder = HeadersBuilder::new(self.event_id, self.sender_id)
+            .internal(self.is_internal)
+            .deduplication(self.deduplication);
 
         if let Some(receiver_id) = self.receiver_id {
             builder = builder.receiver_id(receiver_id);

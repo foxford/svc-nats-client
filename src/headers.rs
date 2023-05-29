@@ -26,6 +26,7 @@ pub struct Headers {
     sender_id: AgentId,
     is_internal: bool,
     receiver_id: Option<AgentId>,
+    deduplication: bool,
 }
 
 impl Headers {
@@ -51,6 +52,7 @@ pub(crate) struct Builder {
     sender_id: AgentId,
     is_internal: bool,
     receiver_id: Option<AgentId>,
+    deduplication: bool,
 }
 
 impl Builder {
@@ -60,6 +62,7 @@ impl Builder {
             sender_id,
             is_internal: true,
             receiver_id: None,
+            deduplication: true,
         }
     }
 
@@ -77,12 +80,20 @@ impl Builder {
         }
     }
 
+    pub(crate) fn deduplication(self, deduplication: bool) -> Self {
+        Self {
+            deduplication,
+            ..self
+        }
+    }
+
     pub(crate) fn build(self) -> Headers {
         Headers {
             event_id: self.event_id,
             sender_id: self.sender_id,
             is_internal: self.is_internal,
             receiver_id: self.receiver_id,
+            deduplication: self.deduplication,
         }
     }
 }
@@ -92,10 +103,14 @@ impl From<Headers> for async_nats::HeaderMap {
         let mut headers = async_nats::HeaderMap::new();
 
         let event_id = value.event_id();
-        headers.insert(
-            async_nats::header::NATS_MESSAGE_ID,
-            event_id.to_string().as_str(),
-        );
+
+        if value.deduplication {
+            headers.insert(
+                async_nats::header::NATS_MESSAGE_ID,
+                event_id.to_string().as_str(),
+            );
+        }
+
         headers.insert(ENTITY_EVENT_TYPE, event_id.entity_type());
         headers.insert(
             ENTITY_EVENT_SEQUENCE_ID,
@@ -153,11 +168,14 @@ impl TryFrom<async_nats::HeaderMap> for Headers {
             None
         };
 
+        let deduplication = value.get(async_nats::header::NATS_MESSAGE_ID).is_some();
+
         Ok(Self {
             event_id,
             sender_id,
             is_internal,
             receiver_id,
+            deduplication,
         })
     }
 }
