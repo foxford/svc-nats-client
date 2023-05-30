@@ -42,8 +42,8 @@ impl Headers {
         self.is_internal
     }
 
-    pub fn receiver_id(&self) -> &Option<AgentId> {
-        &self.receiver_id
+    pub fn receiver_id(&self) -> Option<&AgentId> {
+        self.receiver_id.as_ref()
     }
 }
 
@@ -158,15 +158,10 @@ impl TryFrom<async_nats::HeaderMap> for Headers {
             .as_str()
             .parse::<bool>()?;
 
-        let receiver_agent_id = value.get(RECEIVER_ID).map(|h| h.as_str());
-        let receiver_id = if let Some(receiver_id) = receiver_agent_id {
-            let agent_id =
-                AgentId::from_str(receiver_id).map_err(HeaderError::AgentIdParseFailed)?;
-
-            Some(agent_id)
-        } else {
-            None
-        };
+        let receiver_id = value
+            .get(RECEIVER_ID)
+            .map(|h| AgentId::from_str(h.as_str()).map_err(HeaderError::AgentIdParseFailed))
+            .transpose()?;
 
         let deduplication = value.get(async_nats::header::NATS_MESSAGE_ID).is_some();
 
