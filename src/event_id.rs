@@ -1,6 +1,5 @@
 use serde::Serialize;
 
-// fixme: move to the svc-outbox crate
 #[derive(Debug, Clone, Serialize)]
 pub struct EventId {
     entity_type: String,

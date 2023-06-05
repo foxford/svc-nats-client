@@ -26,7 +26,7 @@ pub struct Headers {
     sender_id: AgentId,
     is_internal: bool,
     receiver_id: Option<AgentId>,
-    deduplication: bool,
+    is_deduplication_enabled: bool,
 }
 
 impl Headers {
@@ -52,7 +52,7 @@ pub(crate) struct Builder {
     sender_id: AgentId,
     is_internal: bool,
     receiver_id: Option<AgentId>,
-    deduplication: bool,
+    is_deduplication_enabled: bool,
 }
 
 impl Builder {
@@ -62,7 +62,7 @@ impl Builder {
             sender_id,
             is_internal: true,
             receiver_id: None,
-            deduplication: true,
+            is_deduplication_enabled: true,
         }
     }
 
@@ -80,9 +80,9 @@ impl Builder {
         }
     }
 
-    pub(crate) fn deduplication(self, deduplication: bool) -> Self {
+    pub(crate) fn enable_deduplication(self, is_deduplication_enabled: bool) -> Self {
         Self {
-            deduplication,
+            is_deduplication_enabled,
             ..self
         }
     }
@@ -93,7 +93,7 @@ impl Builder {
             sender_id: self.sender_id,
             is_internal: self.is_internal,
             receiver_id: self.receiver_id,
-            deduplication: self.deduplication,
+            is_deduplication_enabled: self.is_deduplication_enabled,
         }
     }
 }
@@ -104,7 +104,7 @@ impl From<Headers> for async_nats::HeaderMap {
 
         let event_id = value.event_id();
 
-        if value.deduplication {
+        if value.is_deduplication_enabled {
             headers.insert(
                 async_nats::header::NATS_MESSAGE_ID,
                 event_id.to_string().as_str(),
@@ -163,14 +163,14 @@ impl TryFrom<async_nats::HeaderMap> for Headers {
             .map(|h| AgentId::from_str(h.as_str()).map_err(HeaderError::AgentIdParseFailed))
             .transpose()?;
 
-        let deduplication = value.get(async_nats::header::NATS_MESSAGE_ID).is_some();
+        let is_deduplication_enabled = value.get(async_nats::header::NATS_MESSAGE_ID).is_some();
 
         Ok(Self {
             event_id,
             sender_id,
             is_internal,
             receiver_id,
-            deduplication,
+            is_deduplication_enabled,
         })
     }
 }
