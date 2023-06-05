@@ -32,6 +32,8 @@ pub struct Builder {
     event_id: EventId,
     sender_id: AgentId,
     is_internal: bool,
+    receiver_id: Option<AgentId>,
+    is_deduplication_enabled: bool,
 }
 
 impl Builder {
@@ -42,6 +44,8 @@ impl Builder {
             event_id,
             sender_id,
             is_internal: true,
+            receiver_id: None,
+            is_deduplication_enabled: true,
         }
     }
 
@@ -52,10 +56,30 @@ impl Builder {
         }
     }
 
+    pub fn receiver_id(self, receiver_id: AgentId) -> Self {
+        Self {
+            receiver_id: Some(receiver_id),
+            ..self
+        }
+    }
+
+    pub fn disable_deduplication(self) -> Self {
+        Self {
+            is_deduplication_enabled: false,
+            ..self
+        }
+    }
+
     pub fn build(self) -> Event {
-        let headers = HeadersBuilder::new(self.event_id, self.sender_id)
+        let mut builder = HeadersBuilder::new(self.event_id, self.sender_id)
             .internal(self.is_internal)
-            .build();
+            .enable_deduplication(self.is_deduplication_enabled);
+
+        if let Some(receiver_id) = self.receiver_id {
+            builder = builder.receiver_id(receiver_id);
+        }
+
+        let headers = builder.build();
 
         Event {
             subject: self.subject,

@@ -1,6 +1,6 @@
 [package]
 name = "svc-nats-client"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/foxford/svc-nats-client"
@@ -8,7 +8,9 @@ description = "Async nats client"
 
 [dependencies]
 anyhow = "1.0"
-async-nats = "0.29"
+# todo: wait for the next release
+# PR: https://github.com/nats-io/nats.rs/pull/975 (need for Presence)
+async-nats = { version = "0.29", git = "https://github.com/foxford/nats.rs", branch = "main" }
 async-trait = "0.1"
 futures = "0.3"
 humantime-serde = "1"

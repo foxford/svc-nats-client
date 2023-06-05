@@ -1,5 +1,6 @@
-// fixme: move to the svc-outbox crate
-#[derive(Debug, Clone)]
+use serde::Serialize;
+
+#[derive(Debug, Clone, Serialize)]
 pub struct EventId {
     entity_type: String,
     sequence_id: i64,

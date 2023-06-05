@@ -2,12 +2,16 @@ use crate::{
     event::{Builder as EventBuilder, Event},
     headers::{HeaderError, Headers},
     subject::{Subject, SubjectError, TERMINATED_PREFIX},
-    Config, MessageStream, NatsClient,
+    Config, MessageStream, Messages, NatsClient,
 };
 use anyhow::anyhow;
+
 use async_nats::{
-    jetstream::{consumer::PullConsumer, AckKind, Context, Message},
-    ConnectError, Error, Event as NatsEvent,
+    jetstream::{
+        consumer::{self, AckPolicy, DeliverPolicy, PullConsumer, PushConsumer},
+        AckKind, Context, Message,
+    },
+    Client as AsyncNatsClient, ConnectError, Error, Event as NatsEvent,
 };
 use std::str::FromStr;
 use std::sync::Arc;
@@ -15,6 +19,7 @@ use tracing::{error, warn};
 
 #[derive(Clone)]
 pub struct Client {
+    inner: AsyncNatsClient,
     jetstream: Context,
     config: Config,
 }
@@ -42,9 +47,13 @@ impl Client {
             .connect(&config.url)
             .await?;
 
-        let jetstream = async_nats::jetstream::new(client);
+        let jetstream = async_nats::jetstream::new(client.clone());
 
-        Ok(Self { jetstream, config })
+        Ok(Self {
+            inner: client,
+            jetstream,
+            config,
+        })
     }
 }
 
@@ -66,6 +75,8 @@ pub enum SubscribeError {
     GettingConsumerFailed(Error),
     #[error("failed to create stream of messages: `{0}`")]
     StreamCreationFailed(Error),
+    #[error("failed to create ephemeral consumer: `{0}`")]
+    EphemeralConsumerCreationFailed(Error),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -97,10 +108,11 @@ impl NatsClient for Client {
         Ok(())
     }
 
-    async fn subscribe(&self) -> Result<MessageStream, SubscribeError> {
+    /// Returns a stream of messages for Durable Pull Consumer.
+    async fn subscribe_durable(&self) -> Result<MessageStream, SubscribeError> {
         let config = self
             .config
-            .subscribe
+            .subscribe_durable
             .as_ref()
             .ok_or(SubscribeError::SubscribeConfigNotFound)?;
 
@@ -124,6 +136,44 @@ impl NatsClient for Client {
             .map_err(SubscribeError::StreamCreationFailed)?;
 
         Ok(MessageStream(stream))
+    }
+
+    /// Returns a stream of messages for Ephemeral Push Consumer.
+    async fn subscribe_ephemeral(
+        &self,
+        subject: Subject,
+        deliver_policy: DeliverPolicy,
+        ack_policy: AckPolicy,
+    ) -> Result<Messages, SubscribeError> {
+        let config = self
+            .config
+            .subscribe_ephemeral
+            .as_ref()
+            .ok_or(SubscribeError::SubscribeConfigNotFound)?;
+
+        let stream = self
+            .jetstream
+            .get_stream(&config.stream)
+            .await
+            .map_err(SubscribeError::GettingStreamFailed)?;
+
+        let consumer: PushConsumer = stream
+            .create_consumer(consumer::push::Config {
+                deliver_subject: self.inner.new_inbox(),
+                filter_subject: subject.to_string(),
+                ack_policy,
+                deliver_policy,
+                ..Default::default()
+            })
+            .await
+            .map_err(SubscribeError::EphemeralConsumerCreationFailed)?;
+
+        let messages = consumer
+            .messages()
+            .await
+            .map_err(SubscribeError::StreamCreationFailed)?;
+
+        Ok(messages)
     }
 
     async fn terminate(&self, message: Message) -> Result<(), TermMessageError> {
