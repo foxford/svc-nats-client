@@ -71,6 +71,20 @@ impl<T, E> FailureKind<T, E> for Result<T, E> {
     }
 }
 
+pub trait FailureKindExt<T, E> {
+    /// Maps the internal error E to some other type.
+    fn map_err<E1>(self, map: impl FnOnce(E) -> E1) -> Result<T, HandleMessageFailure<E1>>;
+}
+
+impl<T, E> FailureKindExt<T, E> for Result<T, HandleMessageFailure<E>> {
+    fn map_err<E1>(self, map: impl FnOnce(E) -> E1) -> Result<T, HandleMessageFailure<E1>> {
+        self.map_err(|e| match e {
+            HandleMessageFailure::Transient(e) => HandleMessageFailure::Transient(map(e)),
+            HandleMessageFailure::Permanent(e) => HandleMessageFailure::Permanent(map(e)),
+        })
+    }
+}
+
 pub fn run<H, Fut>(
     nats_client: Client,
     cfg: ConsumerConfig,
