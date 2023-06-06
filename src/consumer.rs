@@ -40,10 +40,23 @@ pub enum HandleMessageFailure<E> {
     Permanent(E),
 }
 
+impl<E> std::fmt::Display for HandleMessageFailure<E>
+where
+    E: std::fmt::Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HandleMessageFailure::Transient(e) => write!(f, "transient failure: {e}"),
+            HandleMessageFailure::Permanent(e) => write!(f, "permanent failure: {e}"),
+        }
+    }
+}
+
 pub trait FailureKind<T, E> {
     /// This error can be fixed by retrying later.
     fn transient(self) -> Result<T, HandleMessageFailure<E>>;
     /// This error can't be fixed by retrying later (parse failure, unknown id, etc).
+    /// Consumer will notify sentry about such errors.
     fn permanent(self) -> Result<T, HandleMessageFailure<E>>;
 }
 
@@ -173,11 +186,11 @@ where
                 let outcome = match handle_message(message.clone()).await {
                     Ok(_) => HandleMessageOutcome::Processed,
                     Err(HandleMessageFailure::Transient(e)) => {
-                        tracing::error!(%e, "transient failure, retrying");
+                        tracing::error!(%e);
                         HandleMessageOutcome::ProcessLater
                     }
                     Err(HandleMessageFailure::Permanent(e)) => {
-                        log_sentry.log_notify(Error::HandleMessageError(e.context("permanent failure, won't process")));
+                        log_sentry.log_notify(Error::HandleMessageError(e));
                         HandleMessageOutcome::WontProcess
                     }
                 };
