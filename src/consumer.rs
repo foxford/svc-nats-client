@@ -54,7 +54,7 @@ where
         let mut log_sentry = LogSentry::new(&cfg);
 
         loop {
-            let result = nats_client.subscribe().await;
+            let result = nats_client.subscribe_durable().await;
             let messages = match result {
                 Ok(messages) => messages,
                 Err(err) => {

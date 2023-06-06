@@ -176,7 +176,7 @@ impl NatsClient for Client {
         Ok(messages)
     }
 
-    async fn terminate(&self, message: Message) -> Result<(), TermMessageError> {
+    async fn terminate(&self, message: &Message) -> Result<(), TermMessageError> {
         let headers = Headers::try_from(message.headers.clone().unwrap_or_default())?;
         let old_subject = Subject::from_str(&message.subject)?;
         let new_subject = Subject::new(

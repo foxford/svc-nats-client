@@ -117,6 +117,7 @@ impl From<Headers> for async_nats::HeaderMap {
             ENTITY_EVENT_SEQUENCE_ID,
             event_id.sequence_id().to_string().as_str(),
         );
+        headers.insert(ENTITY_EVENT_OPERATION, event_id.operation());
         headers.insert(SENDER_ID, value.sender_id().to_string().as_str());
         headers.insert(IS_INTERNAL, value.is_internal().to_string().as_str());
 
