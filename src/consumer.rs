@@ -15,7 +15,7 @@ pub enum Error {
     SubscriptionFailed(SubscribeError),
     StreamClosed,
     InternalError(anyhow::Error),
-    HandleMsgError(anyhow::Error),
+    HandleMessageError(anyhow::Error),
 }
 
 impl std::fmt::Display for Error {
@@ -24,7 +24,7 @@ impl std::fmt::Display for Error {
             Error::SubscriptionFailed(e) => write!(f, "failed to subscribe to nats: {e}"),
             Error::StreamClosed => write!(f, "nats stream was closed"),
             Error::InternalError(e) => write!(f, "internal nats error: {e}"),
-            Error::HandleMsgError(e) => write!(f, "handle msg error: {e}"),
+            Error::HandleMessageError(e) => write!(f, "handle msg error: {e}"),
         }
     }
 }
@@ -35,25 +35,25 @@ enum HandleMessageOutcome {
     WontProcess,
 }
 
-pub enum HandleMsgFailure<E> {
+pub enum HandleMessageFailure<E> {
     Transient(E),
     Permanent(E),
 }
 
 pub trait FailureKind<T, E> {
     /// This error can be fixed by retrying later.
-    fn transient(self) -> Result<T, HandleMsgFailure<E>>;
+    fn transient(self) -> Result<T, HandleMessageFailure<E>>;
     /// This error can't be fixed by retrying later (parse failure, unknown id, etc).
-    fn permanent(self) -> Result<T, HandleMsgFailure<E>>;
+    fn permanent(self) -> Result<T, HandleMessageFailure<E>>;
 }
 
 impl<T, E> FailureKind<T, E> for Result<T, E> {
-    fn transient(self) -> Result<T, HandleMsgFailure<E>> {
-        self.map_err(|e| HandleMsgFailure::Transient(e))
+    fn transient(self) -> Result<T, HandleMessageFailure<E>> {
+        self.map_err(|e| HandleMessageFailure::Transient(e))
     }
 
-    fn permanent(self) -> Result<T, HandleMsgFailure<E>> {
-        self.map_err(|e| HandleMsgFailure::Permanent(e))
+    fn permanent(self) -> Result<T, HandleMessageFailure<E>> {
+        self.map_err(|e| HandleMessageFailure::Permanent(e))
     }
 }
 
@@ -65,7 +65,7 @@ pub fn run<H, Fut>(
 ) -> JoinHandle<Result<(), SubscribeError>>
 where
     H: Fn(Arc<Message>) -> Fut + Send + Sync + 'static,
-    Fut: std::future::Future<Output = Result<(), HandleMsgFailure<anyhow::Error>>>
+    Fut: std::future::Future<Output = Result<(), HandleMessageFailure<anyhow::Error>>>
         + std::marker::Send,
 {
     tokio::spawn(async move {
@@ -129,7 +129,7 @@ async fn handle_stream<H, Fut>(
 ) -> CompletionReason
 where
     H: Fn(Arc<Message>) -> Fut,
-    Fut: std::future::Future<Output = Result<(), HandleMsgFailure<anyhow::Error>>>,
+    Fut: std::future::Future<Output = Result<(), HandleMessageFailure<anyhow::Error>>>,
 {
     let mut retry_count = 0;
     let mut suspend_interval: Option<Duration> = None;
@@ -172,12 +172,12 @@ where
 
                 let outcome = match handle_message(message.clone()).await {
                     Ok(_) => HandleMessageOutcome::Processed,
-                    Err(HandleMsgFailure::Transient(e)) => {
+                    Err(HandleMessageFailure::Transient(e)) => {
                         tracing::error!(%e, "transient failure, retrying");
                         HandleMessageOutcome::ProcessLater
                     }
-                    Err(HandleMsgFailure::Permanent(e)) => {
-                        log_sentry.log_notify(Error::HandleMsgError(e.context("permanent failure, won't process")));
+                    Err(HandleMessageFailure::Permanent(e)) => {
+                        log_sentry.log_notify(Error::HandleMessageError(e.context("permanent failure, won't process")));
                         HandleMessageOutcome::WontProcess
                     }
                 };
