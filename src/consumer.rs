@@ -24,7 +24,7 @@ impl std::fmt::Display for Error {
             Error::SubscriptionFailed(e) => write!(f, "failed to subscribe to nats: {e}"),
             Error::StreamClosed => write!(f, "nats stream was closed"),
             Error::InternalError(e) => write!(f, "internal nats error: {e}"),
-            Error::HandleMessageError(e) => write!(f, "handle msg error: {e}"),
+            Error::HandleMessageError(e) => write!(f, "handle message error: {e}"),
         }
     }
 }
