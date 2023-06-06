@@ -35,6 +35,7 @@ enum HandleMessageOutcome {
     WontProcess,
 }
 
+#[derive(Debug)]
 pub enum HandleMessageFailure<E> {
     Transient(E),
     Permanent(E),
