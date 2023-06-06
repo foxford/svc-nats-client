@@ -6,9 +6,8 @@ use std::{
 
 pub use crate::{
     client::{Client, PublishError, SubscribeError, TermMessageError},
-    config::Config,
+    config::{Config, ConsumerConfig},
     event::Event,
-    event_id::EventId,
     headers::Headers,
     subject::Subject,
 };
@@ -17,11 +16,11 @@ pub use async_nats::jetstream::{
     AckKind, Message,
 };
 
+pub mod consumer;
 pub mod event;
 
 mod client;
 mod config;
-mod event_id;
 mod headers;
 mod subject;
 
@@ -48,5 +47,5 @@ pub trait NatsClient: Send + Sync {
         ack_policy: AckPolicy,
     ) -> Result<Messages, SubscribeError>;
 
-    async fn terminate(&self, message: Message) -> Result<(), TermMessageError>;
+    async fn terminate(&self, message: &Message) -> Result<(), TermMessageError>;
 }

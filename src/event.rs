@@ -1,9 +1,9 @@
 use crate::{
-    event_id::EventId,
     headers::{Builder as HeadersBuilder, Headers},
     subject::Subject,
 };
 use svc_agent::AgentId;
+use svc_events::EventId;
 
 #[derive(Debug)]
 pub struct Event {
