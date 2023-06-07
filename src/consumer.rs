@@ -15,6 +15,7 @@ pub enum Error {
     SubscriptionFailed(SubscribeError),
     StreamClosed,
     InternalError(anyhow::Error),
+    HandleMessageError(anyhow::Error),
 }
 
 impl std::fmt::Display for Error {
@@ -23,20 +24,65 @@ impl std::fmt::Display for Error {
             Error::SubscriptionFailed(e) => write!(f, "failed to subscribe to nats: {e}"),
             Error::StreamClosed => write!(f, "nats stream was closed"),
             Error::InternalError(e) => write!(f, "internal nats error: {e}"),
+            Error::HandleMessageError(e) => write!(f, "handle message error: {e}"),
         }
     }
 }
 
-impl From<anyhow::Error> for Error {
-    fn from(value: anyhow::Error) -> Self {
-        Self::InternalError(value)
-    }
-}
-
-pub enum HandleMessageOutcome {
+enum HandleMessageOutcome {
     Processed,
     ProcessLater,
     WontProcess,
+}
+
+#[derive(Debug)]
+pub enum HandleMessageFailure<E> {
+    Transient(E),
+    Permanent(E),
+}
+
+impl<E> std::fmt::Display for HandleMessageFailure<E>
+where
+    E: std::fmt::Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HandleMessageFailure::Transient(e) => write!(f, "transient failure: {e}"),
+            HandleMessageFailure::Permanent(e) => write!(f, "permanent failure: {e}"),
+        }
+    }
+}
+
+pub trait FailureKind<T, E> {
+    /// This error can be fixed by retrying later.
+    fn transient(self) -> Result<T, HandleMessageFailure<E>>;
+    /// This error can't be fixed by retrying later (parse failure, unknown id, etc).
+    /// Consumer will notify sentry about such errors.
+    fn permanent(self) -> Result<T, HandleMessageFailure<E>>;
+}
+
+impl<T, E> FailureKind<T, E> for Result<T, E> {
+    fn transient(self) -> Result<T, HandleMessageFailure<E>> {
+        self.map_err(|e| HandleMessageFailure::Transient(e))
+    }
+
+    fn permanent(self) -> Result<T, HandleMessageFailure<E>> {
+        self.map_err(|e| HandleMessageFailure::Permanent(e))
+    }
+}
+
+pub trait FailureKindExt<T, E> {
+    /// Maps the internal error E to some other type.
+    fn map_err<E1>(self, map: impl FnOnce(E) -> E1) -> Result<T, HandleMessageFailure<E1>>;
+}
+
+impl<T, E> FailureKindExt<T, E> for Result<T, HandleMessageFailure<E>> {
+    fn map_err<E1>(self, map: impl FnOnce(E) -> E1) -> Result<T, HandleMessageFailure<E1>> {
+        self.map_err(|e| match e {
+            HandleMessageFailure::Transient(e) => HandleMessageFailure::Transient(map(e)),
+            HandleMessageFailure::Permanent(e) => HandleMessageFailure::Permanent(map(e)),
+        })
+    }
 }
 
 pub fn run<H, Fut>(
@@ -47,7 +93,8 @@ pub fn run<H, Fut>(
 ) -> JoinHandle<Result<(), SubscribeError>>
 where
     H: Fn(Arc<Message>) -> Fut + Send + Sync + 'static,
-    Fut: std::future::Future<Output = HandleMessageOutcome> + std::marker::Send,
+    Fut: std::future::Future<Output = Result<(), HandleMessageFailure<anyhow::Error>>>
+        + std::marker::Send,
 {
     tokio::spawn(async move {
         // In case of subscription errors we don't want to spam sentry
@@ -78,7 +125,7 @@ where
 
             match reason {
                 CompletionReason::Shutdown => {
-                    tracing::warn!("Nats consumer completes its work");
+                    tracing::warn!("nats consumer completes its work");
                     break;
                 }
                 CompletionReason::StreamClosed => {
@@ -110,7 +157,7 @@ async fn handle_stream<H, Fut>(
 ) -> CompletionReason
 where
     H: Fn(Arc<Message>) -> Fut,
-    Fut: std::future::Future<Output = HandleMessageOutcome>,
+    Fut: std::future::Future<Output = Result<(), HandleMessageFailure<anyhow::Error>>>,
 {
     let mut retry_count = 0;
     let mut suspend_interval: Option<Duration> = None;
@@ -134,7 +181,7 @@ where
                         // * Failed to send request
                         // * Consumer deleted
                         // * Received unknown message
-                        let err = Error::from(anyhow!(err));
+                        let err = Error::InternalError(anyhow!(err));
                         log_sentry.log_notify(err);
 
                         continue;
@@ -151,18 +198,29 @@ where
                     message.subject, message.payload, message.headers
                 );
 
-                let outcome = handle_message(message.clone()).await;
+                let outcome = match handle_message(message.clone()).await {
+                    Ok(_) => HandleMessageOutcome::Processed,
+                    Err(HandleMessageFailure::Transient(e)) => {
+                        tracing::error!(%e);
+                        HandleMessageOutcome::ProcessLater
+                    }
+                    Err(HandleMessageFailure::Permanent(e)) => {
+                        log_sentry.log_notify(Error::HandleMessageError(e));
+                        HandleMessageOutcome::WontProcess
+                    }
+                };
+
                 match outcome {
                     HandleMessageOutcome::Processed => {
                         retry_count = 0;
 
                         if let Err(err) = message.ack().await {
-                            log_sentry.log_notify(Error::from(anyhow!(err).context("ack failed")));
+                            log_sentry.log_notify(Error::InternalError(anyhow!(err).context("ack failed")));
                         }
                     }
                     HandleMessageOutcome::ProcessLater => {
                         if let Err(err) = message.ack_with(NatsAckKind::Nak(None)).await {
-                            log_sentry.log_notify(Error::from(anyhow!(err).context("nack failed")));
+                            log_sentry.log_notify(Error::InternalError(anyhow!(err).context("nack failed")));
                         }
 
                         retry_count += 1;
@@ -171,7 +229,7 @@ where
                     }
                     HandleMessageOutcome::WontProcess => {
                         if let Err(err) = nats_client.terminate(&message).await {
-                            log_sentry.log_notify(Error::from(anyhow!(err).context("failed to terminate msg")));
+                            log_sentry.log_notify(Error::InternalError(anyhow!(err).context("failed to terminate msg")));
                         }
                     }
                 }
