@@ -21,6 +21,7 @@ pub struct SubscribeDurableConfig {
 #[derive(Clone, Debug, Deserialize)]
 pub struct SubscribeEphemeralConfig {
     pub stream: String,
+    pub consumer_prefix: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]

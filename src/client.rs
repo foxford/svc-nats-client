@@ -157,10 +157,18 @@ impl NatsClient for Client {
             .await
             .map_err(SubscribeError::GettingStreamFailed)?;
 
+        let consumer_name = format!(
+            "{}-{}-{}",
+            config.consumer_prefix,
+            subject.classroom_id(),
+            nuid::next()
+        );
+
         let consumer: PushConsumer = stream
             .create_consumer(consumer::push::Config {
                 deliver_subject: self.inner.new_inbox(),
                 filter_subject: subject.to_string(),
+                name: Some(consumer_name),
                 ack_policy,
                 deliver_policy,
                 ..Default::default()
