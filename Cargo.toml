@@ -20,7 +20,7 @@ reqwest = "0.11"
 serde = "1.0"
 svc-agent = { version = "0.21" }
 svc-error = { version = "0.6", features = ["sentry-extension"] }
-svc-events = { version = "0.10" }
+svc-events = { version = "0.11" }
 thiserror = "1.0"
 tokio = "1.28.1"
 tracing = "0.1"
