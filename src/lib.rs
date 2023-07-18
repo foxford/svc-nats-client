@@ -18,6 +18,7 @@ pub use async_nats::jetstream::{
 
 pub mod consumer;
 pub mod event;
+pub mod test_helpers;
 
 mod client;
 mod config;
