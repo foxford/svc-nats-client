@@ -15,6 +15,12 @@ pub struct TestNatsClient {
     terminate_requests: Arc<RwLock<Vec<Message>>>,
 }
 
+impl Default for TestNatsClient {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TestNatsClient {
     pub fn new() -> Self {
         Self {
