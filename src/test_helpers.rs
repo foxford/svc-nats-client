@@ -22,6 +22,18 @@ impl TestNatsClient {
             terminate_requests: Arc::new(RwLock::new(vec![])),
         }
     }
+
+    pub fn get_publish_requests(&self) -> std::sync::RwLockReadGuard<'_, Vec<Event>> {
+        self.publish_requests
+            .read()
+            .expect("failed to get read lock on publish reqs")
+    }
+
+    pub fn get_terminate_requests(&self) -> std::sync::RwLockReadGuard<'_, Vec<Message>> {
+        self.terminate_requests
+            .read()
+            .expect("failed to get read lock on terminate reqs")
+    }
 }
 
 #[async_trait::async_trait]
