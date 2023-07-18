@@ -5,7 +5,7 @@ use crate::{
 use svc_agent::AgentId;
 use svc_events::EventId;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Event {
     pub subject: Subject,
     pub payload: Vec<u8>,
