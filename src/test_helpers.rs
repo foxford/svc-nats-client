@@ -10,6 +10,8 @@ use crate::{
     TermMessageError,
 };
 
+pub use crate::headers::Builder as HeadersBuilder;
+
 pub struct TestNatsClient {
     publish_requests: Arc<RwLock<Vec<Event>>>,
     terminate_requests: Arc<RwLock<Vec<Message>>>,

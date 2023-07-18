@@ -48,7 +48,7 @@ impl Headers {
     }
 }
 
-pub(crate) struct Builder {
+pub struct Builder {
     event_id: EventId,
     sender_id: AgentId,
     is_internal: bool,
@@ -57,7 +57,7 @@ pub(crate) struct Builder {
 }
 
 impl Builder {
-    pub(crate) fn new(event_id: EventId, sender_id: AgentId) -> Self {
+    pub fn new(event_id: EventId, sender_id: AgentId) -> Self {
         Self {
             event_id,
             sender_id,
@@ -67,28 +67,28 @@ impl Builder {
         }
     }
 
-    pub(crate) fn internal(self, is_internal: bool) -> Self {
+    pub fn internal(self, is_internal: bool) -> Self {
         Self {
             is_internal,
             ..self
         }
     }
 
-    pub(crate) fn receiver_id(self, receiver_id: AgentId) -> Self {
+    pub fn receiver_id(self, receiver_id: AgentId) -> Self {
         Self {
             receiver_id: Some(receiver_id),
             ..self
         }
     }
 
-    pub(crate) fn enable_deduplication(self, is_deduplication_enabled: bool) -> Self {
+    pub fn enable_deduplication(self, is_deduplication_enabled: bool) -> Self {
         Self {
             is_deduplication_enabled,
             ..self
         }
     }
 
-    pub(crate) fn build(self) -> Headers {
+    pub fn build(self) -> Headers {
         Headers {
             event_id: self.event_id,
             sender_id: self.sender_id,
