@@ -8,7 +8,9 @@ use anyhow::anyhow;
 
 use async_nats::{
     jetstream::{
-        consumer::{self, AckPolicy, DeliverPolicy, PullConsumer, PushConsumer},
+        consumer::{self, AckPolicy, DeliverPolicy, PullConsumer, PushConsumer, StreamError},
+        context::{GetStreamError, PublishError as NatsPublishError},
+        stream::ConsumerError,
         AckKind, Context, Message,
     },
     Client as AsyncNatsClient, ConnectError, Error, Event as NatsEvent,
@@ -60,9 +62,9 @@ impl Client {
 #[derive(Debug, thiserror::Error)]
 pub enum PublishError {
     #[error("failed to publish message: `{0}`")]
-    PublishFailed(Error),
+    PublishFailed(NatsPublishError),
     #[error("failed to ack message: `{0}`")]
-    AckFailed(Error),
+    AckFailed(NatsPublishError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -70,13 +72,13 @@ pub enum SubscribeError {
     #[error("config for subscription is not found")]
     SubscribeConfigNotFound,
     #[error("failed to get stream: `{0}`")]
-    GettingStreamFailed(Error),
+    GettingStreamFailed(GetStreamError),
     #[error("failed to get consumer: `{0}`")]
     GettingConsumerFailed(Error),
     #[error("failed to create stream of messages: `{0}`")]
-    StreamCreationFailed(Error),
+    StreamCreationFailed(StreamError),
     #[error("failed to create ephemeral consumer: `{0}`")]
-    EphemeralConsumerCreationFailed(Error),
+    EphemeralConsumerCreationFailed(ConsumerError),
 }
 
 #[derive(Debug, thiserror::Error)]

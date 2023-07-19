@@ -1,4 +1,4 @@
-use async_nats::jetstream::consumer::pull::Stream;
+use async_nats::jetstream::consumer::pull::{MessagesError, Stream};
 use std::{
     pin::Pin,
     task::{Context, Poll},
@@ -28,7 +28,7 @@ mod subject;
 pub struct MessageStream(Stream);
 
 impl futures::Stream for MessageStream {
-    type Item = Result<Message, async_nats::Error>;
+    type Item = Result<Message, MessagesError>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         Pin::new(&mut self.0).poll_next(cx)
