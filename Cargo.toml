@@ -8,7 +8,7 @@ description = "Async nats client"
 
 [dependencies]
 anyhow = "1.0"
-async-nats = { version = "0.30" }
+async-nats = { version = "0.31" }
 async-trait = "0.1"
 futures = "0.3"
 futures-util = "0.3.28"
